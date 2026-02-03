@@ -1,0 +1,16 @@
+# Build outputs
+build/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+
+# Runtime SQLite database
+/data/
+
+# Test data
+/test-books/
+
+# Gradle wrapper jar (use ./gradlew wrapper to regenerate)
+gradle/wrapper/gradle-wrapper.jar
