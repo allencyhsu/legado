@@ -144,12 +144,36 @@ java -jar legado-server-all.jar [port] [booksDir] [dbPath]
 | booksDir | /mnt/d/Books | 書籍存放目錄 |
 | dbPath | ./data/legado.db | SQLite 資料庫路徑 |
 
+### 環境變數
+
+除了命令列參數，也支援以下環境變數：
+
+| 環境變數 | 預設值 | 說明 |
+|----------|--------|------|
+| PORT | 8080 | HTTP 服務端口 |
+| BOOKS_DIR | /mnt/d/Books | 書籍存放目錄 |
+| DB_PATH | ./data/legado.db | SQLite 資料庫路徑 |
+| TTS_URL | http://10.243.2.3:8880 | Qwen3-TTS API 伺服器地址 |
+
+### TTS 朗讀功能
+
+legado-server 內建 TTS 代理，會將前端的朗讀請求轉發至 Qwen3-TTS API 伺服器。
+
+- 閱讀頁面左側工具列有「朗讀」按鈕
+- 支援 9 種預設音色、語速調整
+- 逐段朗讀並高亮當前段落
+
+**前置條件：** 需要部署 Qwen3-TTS API 伺服器，詳見 [qwen3-tts-setup.md](qwen3-tts-setup.md)。
+
+如果未部署 TTS 伺服器，朗讀功能會提示「TTS service unavailable」，不影響其他功能。
+
 ### 修改服務配置
 
-編輯 `/etc/systemd/system/legado-server.service` 中的 `ExecStart` 行：
+編輯 `/etc/systemd/system/legado-server.service` 中的 `ExecStart` 和環境變數：
 
 ```ini
 ExecStart=/usr/bin/java -jar /opt/legado-server/legado-server-all.jar 8080 /data/books /opt/legado-server/data/legado.db
+Environment="TTS_URL=http://10.243.2.3:8880"
 ```
 
 修改後重新載入並重啟：

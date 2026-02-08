@@ -203,6 +203,14 @@ const getProxyImageUrl = (
   ).toString()
 }
 
+// TTS API
+const ttsSpeak = (text: string, voice: string, speed: number, instruct?: string) =>
+  ajax.post<Blob>('/tts/speech', { text, voice, speed, instruct }, { responseType: 'blob' })
+
+const ttsVoices = () => ajax.get('/tts/voices')
+
+const ttsHealth = () => ajax.get('/tts/health', { timeout: 3000 })
+
 export default {
   getReadConfig,
   saveReadConfig,
@@ -223,4 +231,8 @@ export default {
 
   getProxyCoverUrl,
   getProxyImageUrl,
+
+  ttsSpeak,
+  ttsVoices,
+  ttsHealth,
 }

@@ -39,6 +39,10 @@
             </div>
           </template>
         </el-popover>
+        <div class="tool-icon" @click="toggleTts">
+          <div class="iconfont">&#58934;</div>
+          <div class="icon-text">朗读</div>
+        </div>
         <div class="tool-icon" @click="toShelf">
           <div class="iconfont">&#58892;</div>
           <div class="icon-text">书架</div>
@@ -95,6 +99,7 @@
             :spacing="store.config.spacing"
             :fontSize="fontSize"
             :fontFamily="fontFamily"
+            :highlightParagraph="ttsHighlightIndex(data.index)"
             @readedLengthChange="onReadedLengthChange"
             v-if="showContent"
           />
@@ -103,6 +108,11 @@
         <div class="bottom-bar" ref="bottom"></div>
       </div>
     </div>
+    <tts-player
+      :visible="ttsVisible"
+      :paragraphs="currentTtsParagraphs"
+      @stopped="ttsVisible = false"
+    />
   </div>
 </template>
 
@@ -118,6 +128,7 @@ const content = ref()
 // loading spinner
 const { isLoading, loadingWrapper } = useLoading(content, '正在获取信息')
 const store = useBookStore()
+const ttsStore = useTtsStore()
 
 const {
   catalog,
@@ -470,6 +481,59 @@ const ignoreKeyPress = (event: KeyboardEvent) => {
   }
 }
 
+// TTS
+const ttsVisible = ref(false)
+const currentTtsParagraphs = computed(() => {
+  if (chapterData.value.length === 0) return []
+  // Use the first (current) chapter's content
+  return chapterData.value[0]?.content ?? []
+})
+
+const toggleTts = () => {
+  if (ttsVisible.value) {
+    ttsStore.stop()
+    ttsVisible.value = false
+  } else {
+    ttsVisible.value = true
+  }
+}
+
+// Compute highlight index for a given chapter
+const ttsHighlightIndex = (dataIndex: number) => {
+  if (ttsStore.status === 'idle' || ttsStore.currentParagraph < 0) return -1
+  // Only highlight in the first loaded chapter
+  if (chapterData.value.length > 0 && chapterData.value[0].index === dataIndex) {
+    return ttsStore.currentParagraph
+  }
+  return -1
+}
+
+// Auto-scroll to current TTS paragraph
+watch(
+  () => ttsStore.currentParagraph,
+  (paragraphIndex) => {
+    if (paragraphIndex < 0 || !ttsVisible.value) return
+    if (chapterRef.value && chapterRef.value.length > 0) {
+      const el = chapterRef.value[0]?.$el?.parentElement
+      if (el) {
+        const paragraphs = el.querySelectorAll('[data-chapterpos]')
+        // +1 to skip the title element
+        const target = paragraphs[paragraphIndex + 1]
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    }
+  },
+)
+
+// Stop TTS on chapter change
+watch(chapterIndex, () => {
+  if (ttsStore.status !== 'idle') {
+    ttsStore.stop()
+  }
+})
+
 onMounted(async () => {
   await store.loadWebConfig()
   //获取书籍数据
@@ -516,6 +580,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  ttsStore.stop()
   window.removeEventListener('keyup', handleKeyPress)
   window.removeEventListener('keydown', ignoreKeyPress)
   window.removeEventListener('resize', onResize)

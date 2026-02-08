@@ -1,5 +1,8 @@
 package io.legado.server
 
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -16,6 +19,7 @@ import io.legado.server.data.Database
 import io.legado.server.model.ReturnData
 import io.legado.server.routes.bookRoutes
 import io.legado.server.routes.progressRoutes
+import io.legado.server.routes.ttsRoutes
 import io.legado.server.service.BookService
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -32,17 +36,33 @@ fun main(args: Array<String>) {
     val dbPath = System.getenv("DB_PATH")
         ?: args.getOrNull(2)
         ?: "./data/legado.db"
+    val ttsUrl = System.getenv("TTS_URL")
+        ?: args.getOrNull(3)
+        ?: "http://10.243.2.5:8880"
 
     logger.info("Starting Legado Server...")
     logger.info("  Port: $port")
     logger.info("  Books directory: $booksDir")
     logger.info("  Database: $dbPath")
+    logger.info("  TTS URL: $ttsUrl")
 
     // Ensure data directory exists
     File(dbPath).parentFile?.mkdirs()
 
     // Initialize database
     Database.init(dbPath)
+
+    // Create HTTP client for TTS proxy
+    val httpClient = HttpClient(CIO) {
+        engine {
+            requestTimeout = 0 // Disable engine-level timeout
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 300_000   // 5 min overall
+            connectTimeoutMillis = 10_000    // 10s connect
+            socketTimeoutMillis = 300_000    // 5 min socket idle
+        }
+    }
 
     // Create book service
     val bookService = BookService(booksDir)
@@ -82,6 +102,7 @@ fun main(args: Array<String>) {
             // API routes
             bookRoutes(bookService)
             progressRoutes(bookService)
+            ttsRoutes(httpClient, ttsUrl)
 
             // Static Vue frontend
             staticResources("/", "web") {
