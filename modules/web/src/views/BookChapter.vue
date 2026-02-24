@@ -527,12 +527,73 @@ watch(
   },
 )
 
-// Stop TTS on chapter change
+// Stop TTS on chapter change (unless auto-advancing)
+const ttsAutoAdvancing = ref(false)
 watch(chapterIndex, () => {
+  if (ttsAutoAdvancing.value) return
   if (ttsStore.status !== 'idle') {
     ttsStore.stop()
   }
 })
+
+// Auto-advance to next chapter when TTS finishes
+watch(
+  () => ttsStore.chapterFinished,
+  (finished) => {
+    if (!finished || !ttsVisible.value) return
+    ttsStore.chapterFinished = false
+
+    const nextIndex = chapterIndex.value + 1
+    if (typeof catalog.value[nextIndex] === 'undefined') {
+      ElMessage({ message: '已是最后一章', type: 'info' })
+      return
+    }
+
+    console.log('[TTS] Auto-advancing to next chapter:', nextIndex)
+    ttsAutoAdvancing.value = true
+
+    // Load next chapter content
+    store.setContentLoading(true)
+    const bookUrl = store.readingBook.bookUrl
+    const { title, index: catIndex } = catalog.value[nextIndex]
+
+    // Reset chapter data and update progress
+    store.setShowContent(false)
+    jump(top.value, { duration: 0 })
+    saveReadingBookProgressToBrowser(nextIndex, 0)
+    chapterData.value = []
+
+    loadingWrapper(
+      API.getBookContent(bookUrl, catIndex).then(
+        res => {
+          ttsAutoAdvancing.value = false
+          if (res.data.isSuccess) {
+            const content = res.data.data.split(/\n+/)
+            chapterData.value.push({ index: nextIndex, content, title })
+            store.setContentLoading(true)
+            noPoint.value = false
+            store.setShowContent(true)
+            store.saveBookProgress()
+
+            // Start TTS on new chapter after DOM update
+            nextTick(() => {
+              ttsStore.play(content)
+            })
+          } else {
+            ElMessage({ message: res.data.errorMsg, type: 'error' })
+            chapterData.value.push({ index: nextIndex, content: [res.data.errorMsg], title })
+            store.setShowContent(true)
+          }
+        },
+        err => {
+          ttsAutoAdvancing.value = false
+          chapterData.value.push({ index: nextIndex, content: ['获取章节内容失败！'], title })
+          store.setShowContent(true)
+        },
+      ),
+    )
+  },
+)
 
 onMounted(async () => {
   await store.loadWebConfig()

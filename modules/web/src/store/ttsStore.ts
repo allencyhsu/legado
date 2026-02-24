@@ -35,6 +35,7 @@ export const useTtsStore = defineStore('tts', {
     status: 'idle' as TtsStatus,
     currentParagraph: -1,
     totalParagraphs: 0,
+    chapterFinished: false,
     settings: loadSettings(),
     // internal state (not reactive for performance)
     _paragraphs: [] as string[],
@@ -52,6 +53,7 @@ export const useTtsStore = defineStore('tts', {
 
     async play(paragraphs: string[], startIndex = 0) {
       console.log('[TTS] play() called, paragraphs count:', paragraphs.length, 'startIndex:', startIndex)
+      this.chapterFinished = false
       this.stop()
 
       // Filter out empty paragraphs and image-only paragraphs
@@ -130,6 +132,8 @@ export const useTtsStore = defineStore('tts', {
 
       // Playback finished naturally
       if (this.status !== 'idle') {
+        console.log('[TTS] Chapter playback finished naturally')
+        this.chapterFinished = true
         this.status = 'idle'
         this.currentParagraph = -1
       }
@@ -223,6 +227,7 @@ export const useTtsStore = defineStore('tts', {
       this.status = 'idle'
       this.currentParagraph = -1
       this.totalParagraphs = 0
+      this.chapterFinished = false
     },
 
     _cleanupAudio() {
