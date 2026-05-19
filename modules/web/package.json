@@ -12,6 +12,7 @@
     "build": "run-p type-check \"build-only {@}\" -- && node ./scripts/sync.js",
     "preview": "vite preview",
     "build-only": "vite build",
+    "test:mobile-layout": "node scripts/check-mobile-bookshelf-layout.mjs",
     "type-check": "vue-tsc --build --force",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/"

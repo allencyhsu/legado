@@ -30,6 +30,8 @@ const stripHtml = (text: string): string => {
   return text.replace(/<[^>]*>/g, '').trim()
 }
 
+const isIdleStatus = (status: TtsStatus) => status === 'idle'
+
 export const useTtsStore = defineStore('tts', {
   state: () => ({
     status: 'idle' as TtsStatus,
@@ -92,7 +94,7 @@ export const useTtsStore = defineStore('tts', {
       fromIndex: number,
     ) {
       for (let i = fromIndex; i < textParagraphs.length; i++) {
-        if (this.status === 'idle') break
+        if (isIdleStatus(this.status)) break
 
         const { index, text } = textParagraphs[i]
         this.currentParagraph = index
@@ -109,7 +111,7 @@ export const useTtsStore = defineStore('tts', {
             blob = await this._fetchAudio(text)
           }
 
-          if (this.status === 'idle') break
+          if (isIdleStatus(this.status)) break
 
           // Start prefetching next paragraph
           if (i + 1 < textParagraphs.length) {
@@ -119,10 +121,10 @@ export const useTtsStore = defineStore('tts', {
           // Play current audio
           await this._playBlob(blob)
 
-          if (this.status === 'idle') break
+          if (isIdleStatus(this.status)) break
         } catch (e) {
           console.error('TTS playback error:', e)
-          if (this.status !== 'idle') {
+          if (!isIdleStatus(this.status)) {
             // Skip failed paragraph and continue
             continue
           }
@@ -131,7 +133,7 @@ export const useTtsStore = defineStore('tts', {
       }
 
       // Playback finished naturally
-      if (this.status !== 'idle') {
+      if (!isIdleStatus(this.status)) {
         console.log('[TTS] Chapter playback finished naturally')
         this.chapterFinished = true
         this.status = 'idle'

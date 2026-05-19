@@ -78,7 +78,10 @@ const subJustify = computed(() =>
 
 <style lang="scss" scoped>
 .books-wrapper {
+  height: 100%;
+  min-height: 0;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 
   .wrapper {
     display: grid;
@@ -90,6 +93,7 @@ const subJustify = computed(() =>
       user-select: none;
       display: flex;
       cursor: pointer;
+      touch-action: manipulation;
       margin-bottom: 18px;
       padding: 24px 24px;
       width: 360px;

@@ -452,6 +452,9 @@ onMounted(() => {
     .shelf-wrapper {
       padding: 0;
       flex-grow: 1;
+      min-height: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
 
       :deep(.el-loading-spinner) {
         display: none;
