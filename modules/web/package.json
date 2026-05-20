@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "test:mobile-layout": "node scripts/check-mobile-bookshelf-layout.mjs",
+    "test:mobile-activation": "node scripts/check-mobile-book-activation.mjs",
     "test:reading-state": "node scripts/check-reading-state-resilience.mjs",
     "type-check": "vue-tsc --build --force",
     "lint:fix": "eslint . --fix",

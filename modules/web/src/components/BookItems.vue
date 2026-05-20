@@ -5,7 +5,14 @@
         class="book"
         v-for="book in books"
         :key="book.bookUrl"
-        @click="handleClick(book)"
+        role="button"
+        tabindex="0"
+        @pointerdown="handlePointerDown($event, book)"
+        @pointerup="handlePointerUp($event, book)"
+        @pointercancel="handlePointerCancel"
+        @keydown.enter.prevent="handleKeyboardActivate(book)"
+        @keydown.space.prevent="handleKeyboardActivate(book)"
+        @click="handleClick($event, book)"
       >
         <div class="cover-img">
           <img
@@ -61,7 +68,57 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['bookClick'])
-const handleClick = (book: Book | SeachBook) => emit('bookClick', book)
+const TAP_MOVEMENT_THRESHOLD = 10
+
+let pointerStart:
+  | {
+      pointerId: number
+      clientX: number
+      clientY: number
+      bookUrl: string
+    }
+  | undefined
+let ignoreNextClick = false
+
+const activateBook = (book: Book | SeachBook) => emit('bookClick', book)
+const handlePointerDown = (event: PointerEvent, book: Book | SeachBook) => {
+  if (event.pointerType === 'mouse') return
+  pointerStart = {
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    bookUrl: book.bookUrl,
+  }
+}
+const handlePointerUp = (event: PointerEvent, book: Book | SeachBook) => {
+  if (
+    pointerStart === undefined ||
+    pointerStart.pointerId !== event.pointerId ||
+    pointerStart.bookUrl !== book.bookUrl
+  ) {
+    return
+  }
+  const moved =
+    Math.abs(event.clientX - pointerStart.clientX) >
+      TAP_MOVEMENT_THRESHOLD ||
+    Math.abs(event.clientY - pointerStart.clientY) > TAP_MOVEMENT_THRESHOLD
+  pointerStart = undefined
+  if (moved) return
+  ignoreNextClick = true
+  activateBook(book)
+}
+const handlePointerCancel = () => {
+  pointerStart = undefined
+}
+const handleKeyboardActivate = (book: Book | SeachBook) => activateBook(book)
+const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
+  if (ignoreNextClick) {
+    ignoreNextClick = false
+    event.preventDefault()
+    return
+  }
+  activateBook(book)
+}
 const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
   if (coverUrl === undefined) return API.getProxyCoverUrl(bookUrl)
   return isLegadoUrl(coverUrl) ? API.getProxyCoverUrl(coverUrl) : coverUrl
