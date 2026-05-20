@@ -138,6 +138,7 @@ const content = ref()
 const { isLoading, loadingWrapper } = useLoading(content, '正在获取信息')
 const store = useBookStore()
 const ttsStore = useTtsStore()
+const route = useRoute()
 
 const {
   catalog,
@@ -184,16 +185,29 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback
 }
 
+const queryString = (key: string) => {
+  const value = route.query[key]
+  return Array.isArray(value) ? value[0] : value
+}
+
 const resolveReadingBook = (): ReadingBook | undefined => {
   const recent = parseReadingRecent()
   const bookUrl =
-    getSessionStorageItem('bookUrl') || store.readingBook.bookUrl || recent?.bookUrl
+    queryString('bookUrl') ||
+    getSessionStorageItem('bookUrl') ||
+    store.readingBook.bookUrl ||
+    recent?.bookUrl
   const name =
-    getSessionStorageItem('bookName') || store.readingBook.name || recent?.name
+    queryString('bookName') ||
+    getSessionStorageItem('bookName') ||
+    store.readingBook.name ||
+    recent?.name
   const author =
+    queryString('bookAuthor') ??
     getSessionStorageItem('bookAuthor') ??
     store.readingBook.author ??
     recent?.author
+  const routeIsSeachBook = queryString('isSeachBook')
   const sessionIsSeachBook = getSessionStorageItem('isSeachBook')
 
   if (
@@ -211,17 +225,21 @@ const resolveReadingBook = (): ReadingBook | undefined => {
     name,
     author,
     chapterIndex: toNumber(
-      getSessionStorageItem('chapterIndex') ??
+      queryString('chapterIndex') ??
+        getSessionStorageItem('chapterIndex') ??
         store.readingBook.chapterIndex ??
         recent?.chapterIndex,
     ),
     chapterPos: toNumber(
-      getSessionStorageItem('chapterPos') ??
+      queryString('chapterPos') ??
+        getSessionStorageItem('chapterPos') ??
         store.readingBook.chapterPos ??
         recent?.chapterPos,
     ),
     isSeachBook:
-      sessionIsSeachBook != null
+      routeIsSeachBook != null
+        ? routeIsSeachBook === 'true'
+        : sessionIsSeachBook != null
         ? sessionIsSeachBook === 'true'
         : store.readingBook.isSeachBook === true ||
           recent?.isSeachBook === true,

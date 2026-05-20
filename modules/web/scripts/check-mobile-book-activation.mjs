@@ -18,6 +18,12 @@ const assertContains = (content, pattern, message) => {
 
 assertContains(
   bookItems,
+  /:href=["']getChapterHref\(book\)["']/,
+  'Book rows must have a native chapter href so mobile browsers can navigate even when JS click handling is unreliable.',
+)
+
+assertContains(
+  bookItems,
   /@pointerdown=["']handlePointerDown\(\$event,\s*book\)["']/,
   'Book rows must record pointer-down position for mobile tap activation.',
 )

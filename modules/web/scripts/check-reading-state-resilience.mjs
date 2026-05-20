@@ -35,6 +35,18 @@ assertContains(
 
 assertContains(
   bookChapter,
+  /useRoute\(\)/,
+  'BookChapter must inspect route query as a native-link fallback for mobile browsers.',
+)
+
+assertContains(
+  bookChapter,
+  /queryString\(['"]bookUrl['"]\)/,
+  'BookChapter must recover selected bookUrl from the chapter route query.',
+)
+
+assertContains(
+  bookChapter,
   /parseReadingRecent\(\)/,
   'BookChapter must fall back to the persisted recent book when sessionStorage is missing.',
 )

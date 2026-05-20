@@ -1,10 +1,11 @@
 <template>
   <div class="books-wrapper">
     <div class="wrapper">
-      <div
+      <a
         class="book"
         v-for="book in books"
         :key="book.bookUrl"
+        :href="getChapterHref(book)"
         role="button"
         tabindex="0"
         @pointerdown="handlePointerDown($event, book)"
@@ -54,7 +55,7 @@
           </div>
           <div class="last-chapter">最新：{{ book.latestChapterTitle }}</div>
         </div>
-      </div>
+      </a>
     </div>
   </div>
 </template>
@@ -81,6 +82,26 @@ let pointerStart:
 let ignoreNextClick = false
 
 const activateBook = (book: Book | SeachBook) => emit('bookClick', book)
+const getChapterHref = (book: Book | SeachBook) => {
+  const {
+    bookUrl,
+    name,
+    author,
+    // @ts-expect-error: shelf and search books expose progress differently
+    durChapterIndex = 0,
+    // @ts-expect-error: shelf and search books expose progress differently
+    durChapterPos = 0,
+  } = book
+  const query = new URLSearchParams({
+    bookUrl,
+    bookName: name,
+    bookAuthor: author,
+    chapterIndex: String(durChapterIndex),
+    chapterPos: String(durChapterPos),
+    isSeachBook: String('respondTime' in book),
+  })
+  return `#/chapter?${query.toString()}`
+}
 const handlePointerDown = (event: PointerEvent, book: Book | SeachBook) => {
   if (event.pointerType === 'mouse') return
   pointerStart = {
@@ -117,6 +138,7 @@ const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
     event.preventDefault()
     return
   }
+  event.preventDefault()
   activateBook(book)
 }
 const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
@@ -147,6 +169,8 @@ const subJustify = computed(() =>
     grid-gap: 10px;
 
     .book {
+      color: inherit;
+      text-decoration: none;
       user-select: none;
       display: flex;
       cursor: pointer;
