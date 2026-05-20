@@ -122,6 +122,15 @@ import settings from '@/config/themeConfig'
 import API from '@api'
 import { useLoading } from '@/hooks/loading'
 import { useThrottleFn } from '@vueuse/shared'
+import type { BaseBook } from '@/book'
+import {
+  getLocalStorageItem,
+  getSessionStorageItem,
+  removeLocalStorageItem,
+  removeSessionStorageItem,
+  setLocalStorageItem,
+  setSessionStorageItem,
+} from '@/utils/browserStorage'
 import { isNullOrBlank } from '@/utils/utils'
 
 const content = ref()
@@ -154,6 +163,71 @@ const isSeachBook = computed({
   set: value => (store.readingBook.isSeachBook = value),
 })
 
+type ReadingBook = BaseBook & {
+  chapterPos: number
+  chapterIndex: number
+  isSeachBook?: boolean
+}
+
+const parseReadingRecent = (): Partial<ReadingBook> | undefined => {
+  const readingRecentStr = getLocalStorageItem('readingRecent')
+  if (readingRecentStr == null) return undefined
+  try {
+    return JSON.parse(readingRecentStr)
+  } catch {
+    removeLocalStorageItem('readingRecent')
+  }
+}
+
+const toNumber = (value: unknown, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const resolveReadingBook = (): ReadingBook | undefined => {
+  const recent = parseReadingRecent()
+  const bookUrl =
+    getSessionStorageItem('bookUrl') || store.readingBook.bookUrl || recent?.bookUrl
+  const name =
+    getSessionStorageItem('bookName') || store.readingBook.name || recent?.name
+  const author =
+    getSessionStorageItem('bookAuthor') ??
+    store.readingBook.author ??
+    recent?.author
+  const sessionIsSeachBook = getSessionStorageItem('isSeachBook')
+
+  if (
+    typeof bookUrl !== 'string' ||
+    typeof name !== 'string' ||
+    isNullOrBlank(bookUrl) ||
+    isNullOrBlank(name) ||
+    author == null
+  ) {
+    return undefined
+  }
+
+  return {
+    bookUrl,
+    name,
+    author,
+    chapterIndex: toNumber(
+      getSessionStorageItem('chapterIndex') ??
+        store.readingBook.chapterIndex ??
+        recent?.chapterIndex,
+    ),
+    chapterPos: toNumber(
+      getSessionStorageItem('chapterPos') ??
+        store.readingBook.chapterPos ??
+        recent?.chapterPos,
+    ),
+    isSeachBook:
+      sessionIsSeachBook != null
+        ? sessionIsSeachBook === 'true'
+        : store.readingBook.isSeachBook === true ||
+          recent?.isSeachBook === true,
+  }
+}
+
 // 当前阅读书籍readingBook持久化
 watch(
   () => store.readingBook,
@@ -161,10 +235,13 @@ watch(
     // 保存localStorage
     // localStorage.setItem(book.bookUrl, JSON.stringify(book));
     // 最近阅读
-    localStorage.setItem('readingRecent', JSON.stringify(book))
+    setLocalStorageItem('readingRecent', JSON.stringify(book))
     //保存 sessionStorage
-    sessionStorage.setItem('chapterIndex', book.chapterIndex.toString())
-    sessionStorage.setItem('chapterPos', book.chapterPos.toString())
+    setSessionStorageItem('bookUrl', book.bookUrl)
+    setSessionStorageItem('bookName', book.name)
+    setSessionStorageItem('bookAuthor', book.author)
+    setSessionStorageItem('chapterIndex', book.chapterIndex.toString())
+    setSessionStorageItem('chapterPos', book.chapterPos.toString())
   },
   { deep: 1 },
 )
@@ -597,27 +674,12 @@ watch(
 
 onMounted(async () => {
   await store.loadWebConfig()
-  //获取书籍数据
-  const bookUrl = sessionStorage.getItem('bookUrl')
-  const name = sessionStorage.getItem('bookName')
-  const author = sessionStorage.getItem('bookAuthor')
-  const chapterIndex = Number(sessionStorage.getItem('chapterIndex') || 0)
-  const chapterPos = Number(sessionStorage.getItem('chapterPos') || 0)
-  const isSeachBook = sessionStorage.getItem('isSeachBook') === 'true'
-  if (isNullOrBlank(bookUrl) || isNullOrBlank(name) || author === null) {
+  const book = resolveReadingBook()
+  if (book === undefined) {
     ElMessage.warning('书籍信息为空，即将自动返回书架页面...')
     return setTimeout(toShelf, 500)
   }
-  const book: typeof store.readingBook = {
-    // @ts-expect-error: bookUrl name author is NON_Blank string here
-    bookUrl,
-    // @ts-expect-error: bookUrl name author is NON_Blank string here
-    name,
-    author,
-    chapterIndex,
-    chapterPos,
-    isSeachBook,
-  }
+  const { chapterIndex, chapterPos, name } = book
   onResize()
   window.addEventListener('resize', onResize)
   loadingWrapper(
@@ -635,7 +697,7 @@ onMounted(async () => {
       if (infiniteLoading.value === true) scrollObserver.observe(loading.value)
       //第二次点击同一本书 页面标题不会变化
       document.title = '...'
-      document.title = (name as string) + ' | ' + chapters[chapterIndex].title
+      document.title = name + ' | ' + chapters[chapterIndex].title
     }),
   )
 })
@@ -676,7 +738,7 @@ const addToBookShelfConfirm = async () => {
         //选择否，删除书籍
         await API.deleteBook(book)
       })
-      .finally(() => sessionStorage.removeItem('isSeachBook'))
+      .finally(() => removeSessionStorageItem('isSeachBook'))
   }
 }
 onBeforeRouteLeave(async (to, from, next) => {

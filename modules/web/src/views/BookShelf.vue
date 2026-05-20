@@ -91,6 +91,12 @@ import API, {
   parseLeagdoHttpUrlWithDefault,
   setApiEntryPoint,
 } from '@api'
+import {
+  getLocalStorageItem,
+  removeLocalStorageItem,
+  setLocalStorageItem,
+  setSessionStorageItem,
+} from '@/utils/browserStorage'
 import { validatorHttpUrl } from '@/utils/utils'
 import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
@@ -203,9 +209,9 @@ const setLegadoRetmoteUrl = () => {
               store.clearSearchBooks()
               setApiEntryPoint(...parseLeagdoHttpUrlWithDefault(url))
               if (url === location.origin) {
-                localStorage.removeItem(baseURL_localStorage_key)
+                removeLocalStorageItem(baseURL_localStorage_key)
               } else {
-                localStorage.setItem(baseURL_localStorage_key, url)
+                setLocalStorageItem(baseURL_localStorage_key, url)
               }
               store.loadBookShelf()
               done()
@@ -262,13 +268,7 @@ const toDetail = (
     searchBook()
     return
   }
-  sessionStorage.setItem('bookUrl', bookUrl)
-  sessionStorage.setItem('bookName', bookName)
-  sessionStorage.setItem('bookAuthor', bookAuthor)
-  sessionStorage.setItem('chapterIndex', String(chapterIndex))
-  sessionStorage.setItem('chapterPos', String(chapterPos))
-  sessionStorage.setItem('isSeachBook', String(isSeachBook))
-  readingRecent.value = {
+  const nextReadingBook = {
     name: bookName,
     author: bookAuthor,
     bookUrl,
@@ -276,7 +276,15 @@ const toDetail = (
     chapterPos,
     isSeachBook,
   }
-  localStorage.setItem('readingRecent', JSON.stringify(readingRecent.value))
+  store.setReadingBook(nextReadingBook)
+  setSessionStorageItem('bookUrl', bookUrl)
+  setSessionStorageItem('bookName', bookName)
+  setSessionStorageItem('bookAuthor', bookAuthor)
+  setSessionStorageItem('chapterIndex', String(chapterIndex))
+  setSessionStorageItem('chapterPos', String(chapterPos))
+  setSessionStorageItem('isSeachBook', String(isSeachBook))
+  readingRecent.value = nextReadingBook
+  setLocalStorageItem('readingRecent', JSON.stringify(nextReadingBook))
   router.push({
     path: '/chapter',
   })
@@ -291,11 +299,15 @@ const loadShelf = async () => {
 
 onMounted(() => {
   //获取最近阅读书籍
-  const readingRecentStr = localStorage.getItem('readingRecent')
+  const readingRecentStr = getLocalStorageItem('readingRecent')
   if (readingRecentStr != null) {
-    readingRecent.value = JSON.parse(readingRecentStr)
-    if (typeof readingRecent.value.chapterIndex == 'undefined') {
-      readingRecent.value.chapterIndex = 0
+    try {
+      readingRecent.value = JSON.parse(readingRecentStr)
+      if (typeof readingRecent.value.chapterIndex == 'undefined') {
+        readingRecent.value.chapterIndex = 0
+      }
+    } catch {
+      removeLocalStorageItem('readingRecent')
     }
   }
   console.log('bookshelf mounted')
