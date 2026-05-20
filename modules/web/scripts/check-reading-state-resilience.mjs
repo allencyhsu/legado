@@ -17,8 +17,8 @@ const assertContains = (content, pattern, message) => {
 
 assertContains(
   bookShelf,
-  /store\.setReadingBook\(nextReadingBook\)[\s\S]*router\.push\(\{\s*path:\s*['"]\/chapter['"],?\s*\}\)/,
-  'BookShelf must put the selected book in Pinia before routing to /chapter.',
+  /store\.setReadingBook\(nextReadingBook\)[\s\S]*router\.push\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(nextReadingBook\),\s*\}\)/,
+  'BookShelf must put the selected book in Pinia and route query before routing to /chapter.',
 )
 
 assertContains(

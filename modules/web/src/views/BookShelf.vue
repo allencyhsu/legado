@@ -91,7 +91,7 @@ import {
   setLocalStorageItem,
   setSessionStorageItem,
 } from '@/utils/browserStorage'
-import { getChapterHref } from '@/utils/chapterLink'
+import { getChapterHref, getChapterQuery } from '@/utils/chapterLink'
 import { validatorHttpUrl } from '@/utils/utils'
 import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
@@ -282,11 +282,15 @@ const toDetail = (
   setLocalStorageItem('readingRecent', JSON.stringify(nextReadingBook))
   router.push({
     path: '/chapter',
+    query: getChapterQuery(nextReadingBook),
   })
 }
 
 const handleRecentClick = (event: MouseEvent) => {
-  event.preventDefault()
+  if (readingRecent.value.bookUrl === '') {
+    event.preventDefault()
+    return
+  }
   toDetail(
     readingRecent.value.bookUrl,
     readingRecent.value.name,

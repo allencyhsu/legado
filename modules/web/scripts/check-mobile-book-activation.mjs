@@ -20,6 +20,13 @@ const assertContains = (content, pattern, message) => {
   }
 }
 
+const assertNotContains = (content, pattern, message) => {
+  if (pattern.test(content)) {
+    console.error(message)
+    process.exitCode = 1
+  }
+}
+
 assertContains(
   bookItems,
   /:href=["']getChapterHref\(book\)["']/,
@@ -48,6 +55,30 @@ assertContains(
   bookItems,
   /@click=["']handleClick\(\$event,\s*book\)["']/,
   'Book rows must keep a click fallback for keyboard, desktop, and older browsers.',
+)
+
+assertNotContains(
+  bookItems,
+  /const handleClick[\s\S]*?event\.preventDefault\(\)\s*\n\s*activateBook\(book\)/,
+  'Book row click handling must not block native href navigation for shelf books on mobile browsers.',
+)
+
+assertContains(
+  bookItems,
+  /'respondTime' in book[\s\S]*?event\.preventDefault\(\)/,
+  'Search result clicks must still wait for JS saveBook handling before navigation.',
+)
+
+assertNotContains(
+  bookShelf,
+  /const handleRecentClick[\s\S]*?event\.preventDefault\(\)\s*\n\s*toDetail\(/,
+  'Recent reading click handling must not block native href navigation on mobile browsers.',
+)
+
+assertContains(
+  bookShelf,
+  /router\.push\(\{\s*path: ['"]\/chapter['"],\s*query: getChapterQuery\(nextReadingBook\),\s*\}\)/,
+  'Programmatic chapter navigation must carry the same query data as native href navigation.',
 )
 
 assertContains(

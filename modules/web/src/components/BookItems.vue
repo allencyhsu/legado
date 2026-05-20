@@ -114,13 +114,14 @@ const handlePointerCancel = () => {
 }
 const handleKeyboardActivate = (book: Book | SeachBook) => activateBook(book)
 const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
+  const needsJsNavigation = 'respondTime' in book
   if (ignoreNextClick) {
     ignoreNextClick = false
-    event.preventDefault()
+    if (needsJsNavigation) event.preventDefault()
     return
   }
-  event.preventDefault()
   activateBook(book)
+  if (needsJsNavigation) event.preventDefault()
 }
 const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
   if (coverUrl === undefined) return API.getProxyCoverUrl(bookUrl)
