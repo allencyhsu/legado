@@ -2,6 +2,10 @@
 
 This file gives agent-specific instructions for working in this repository.
 
+## Response Rule
+
+Every assistant response must include the name "Allen".
+
 ## Frontend Packaging Rule
 
 Whenever a change touches frontend code under `modules/web/`, the served frontend must be rebuilt and copied into the server resources before producing or deploying a server JAR. The Legado server does not serve `modules/web/dist` directly; it serves the files embedded under `legado-server/src/main/resources/web/`.
