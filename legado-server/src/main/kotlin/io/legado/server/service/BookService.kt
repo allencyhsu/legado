@@ -20,6 +20,7 @@ class BookService(private val booksDir: String) {
 
     companion object {
         private val SUPPORTED_EXTENSIONS = setOf("txt", "epub")
+        private val SUPPORTED_COVER_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")
         private const val DEFAULT_READ_CONFIG = """{"theme":0,"font":0,"fontSize":18,"readWidth":800}"""
     }
 
@@ -220,7 +221,11 @@ class BookService(private val booksDir: String) {
 
         // For local image files
         val file = File(path)
-        if (file.exists() && file.isFile) {
+        if (
+            file.exists() &&
+            file.isFile &&
+            file.extension.lowercase() in SUPPORTED_COVER_EXTENSIONS
+        ) {
             return file.readBytes()
         }
 

@@ -71,6 +71,8 @@ const props = defineProps<{
 
 const emit = defineEmits(['bookClick'])
 const TAP_MOVEMENT_THRESHOLD = 10
+const DEFAULT_COVER_SRC =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
 let pointerStart:
   | {
@@ -124,7 +126,7 @@ const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
   if (needsJsNavigation) event.preventDefault()
 }
 const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
-  if (coverUrl === undefined) return API.getProxyCoverUrl(bookUrl)
+  if (coverUrl === undefined) return DEFAULT_COVER_SRC
   return isLegadoUrl(coverUrl) ? API.getProxyCoverUrl(coverUrl) : coverUrl
 }
 const proxyImage = (evt: Event) => {
@@ -166,10 +168,15 @@ const subJustify = computed(() =>
       .cover-img {
         width: 84px;
         height: 112px;
+        background: linear-gradient(145deg, #d8d0c2, #8f9b94);
+        border: 1px solid #d7d2c8;
+        box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.22);
+        box-sizing: border-box;
 
         .cover {
           width: 84px;
           height: 112px;
+          object-fit: cover;
         }
       }
 
