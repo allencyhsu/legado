@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import type { Book, SeachBook } from '@/book'
 import { dateFormat, isLegadoUrl } from '../utils/utils'
+import { getChapterHref } from '@/utils/chapterLink'
 import API from '@api'
 const props = defineProps<{
   books: Array<Book | SeachBook>
@@ -82,26 +83,6 @@ let pointerStart:
 let ignoreNextClick = false
 
 const activateBook = (book: Book | SeachBook) => emit('bookClick', book)
-const getChapterHref = (book: Book | SeachBook) => {
-  const {
-    bookUrl,
-    name,
-    author,
-    // @ts-expect-error: shelf and search books expose progress differently
-    durChapterIndex = 0,
-    // @ts-expect-error: shelf and search books expose progress differently
-    durChapterPos = 0,
-  } = book
-  const query = new URLSearchParams({
-    bookUrl,
-    bookName: name,
-    bookAuthor: author,
-    chapterIndex: String(durChapterIndex),
-    chapterPos: String(durChapterPos),
-    isSeachBook: String('respondTime' in book),
-  })
-  return `#/chapter?${query.toString()}`
-}
 const handlePointerDown = (event: PointerEvent, book: Book | SeachBook) => {
   if (event.pointerType === 'mouse') return
   pointerStart = {

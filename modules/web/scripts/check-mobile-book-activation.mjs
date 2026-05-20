@@ -6,6 +6,10 @@ const bookItems = fs.readFileSync(
   path.join(root, 'src/components/BookItems.vue'),
   'utf8',
 )
+const bookShelf = fs.readFileSync(
+  path.join(root, 'src/views/BookShelf.vue'),
+  'utf8',
+)
 const packageJsonPath = path.join(root, 'package.json')
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
 
@@ -20,6 +24,12 @@ assertContains(
   bookItems,
   /:href=["']getChapterHref\(book\)["']/,
   'Book rows must have a native chapter href so mobile browsers can navigate even when JS click handling is unreliable.',
+)
+
+assertContains(
+  bookShelf,
+  /:href=["']getChapterHref\(readingRecent\)["']/,
+  'Recent reading entry must have a native chapter href for mobile browsers.',
 )
 
 assertContains(

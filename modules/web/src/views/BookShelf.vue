@@ -19,27 +19,21 @@
         <div class="recent-wrapper">
           <div class="recent-title">最近阅读</div>
           <div class="reading-recent">
-            <el-tag
-              :type="
-                readingRecent.name == '尚无阅读记录' ? 'warning' : 'primary'
-              "
-              class="recent-book"
-              size="large"
-              @click="
-                toDetail(
-                  readingRecent.bookUrl,
-                  readingRecent.name,
-                  readingRecent.author,
-                  readingRecent.chapterIndex,
-                  readingRecent.chapterPos,
-                  readingRecent.isSeachBook,
-                  true,
-                )
-              "
+            <a
+              :href="getChapterHref(readingRecent)"
               :class="{ 'no-point': readingRecent.bookUrl == '' }"
+              @click="handleRecentClick"
             >
-              {{ readingRecent.name }}
-            </el-tag>
+              <el-tag
+                :type="
+                  readingRecent.name == '尚无阅读记录' ? 'warning' : 'primary'
+                "
+                class="recent-book"
+                size="large"
+              >
+                {{ readingRecent.name }}
+              </el-tag>
+            </a>
           </div>
         </div>
         <div class="setting-wrapper">
@@ -97,6 +91,7 @@ import {
   setLocalStorageItem,
   setSessionStorageItem,
 } from '@/utils/browserStorage'
+import { getChapterHref } from '@/utils/chapterLink'
 import { validatorHttpUrl } from '@/utils/utils'
 import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
@@ -288,6 +283,19 @@ const toDetail = (
   router.push({
     path: '/chapter',
   })
+}
+
+const handleRecentClick = (event: MouseEvent) => {
+  event.preventDefault()
+  toDetail(
+    readingRecent.value.bookUrl,
+    readingRecent.value.name,
+    readingRecent.value.author,
+    readingRecent.value.chapterIndex,
+    readingRecent.value.chapterPos,
+    readingRecent.value.isSeachBook,
+    true,
+  )
 }
 
 const loadShelf = async () => {
