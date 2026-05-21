@@ -36,6 +36,7 @@ Important details:
 
 - Do not run `./gradlew shadowJar` from the repository root; `shadowJar` belongs to the standalone `legado-server/` Gradle project.
 - Commit the updated generated assets in `legado-server/src/main/resources/web/` together with the frontend source changes.
+- If any code or embedded frontend resource changes after a JAR was already uploaded, rebuild the JAR and upload it again before deployment. Never install an older `/tmp/legado-server-all.jar.new` after local changes; verify the remote `/tmp` checksum matches the current local checksum first.
 - If deploying to `allen@800g4`, upload the rebuilt JAR and replace the service JAR:
 
 ```bash
