@@ -77,8 +77,8 @@ assertNotContains(
 
 assertContains(
   bookShelf,
-  /router\.push\(\{\s*path: ['"]\/chapter['"],\s*query: getChapterQuery\(nextReadingBook\),\s*\}\)/,
-  'Programmatic chapter navigation must carry the same query data as native href navigation.',
+  /router\.push\(\{\s*path: ['"]\/chapter['"],\s*query: getChapterQuery\(nextReadingBook,\s*route\.query\),\s*\}\)/,
+  'Programmatic chapter navigation must carry the same reading query data and preserve token query parameters.',
 )
 
 assertContains(

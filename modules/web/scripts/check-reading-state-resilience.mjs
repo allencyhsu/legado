@@ -17,8 +17,8 @@ const assertContains = (content, pattern, message) => {
 
 assertContains(
   bookShelf,
-  /store\.setReadingBook\(nextReadingBook\)[\s\S]*router\.push\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(nextReadingBook\),\s*\}\)/,
-  'BookShelf must put the selected book in Pinia and route query before routing to /chapter.',
+  /store\.setReadingBook\(nextReadingBook\)[\s\S]*router\.push\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(nextReadingBook,\s*route\.query\),\s*\}\)/,
+  'BookShelf must put the selected book in Pinia, preserve non-reading query parameters, and route to /chapter.',
 )
 
 assertContains(
@@ -47,14 +47,14 @@ assertContains(
 
 assertContains(
   bookChapter,
-  /import\s+\{\s*getChapterQuery\s*\}\s+from\s+['"]@\/utils\/chapterLink['"]/,
+  /import\s+\{[^}]*getChapterQuery[^}]*\}\s+from\s+['"]@\/utils\/chapterLink['"]/,
   'BookChapter must reuse getChapterQuery when synchronizing reading progress to the URL.',
 )
 
 assertContains(
   bookChapter,
-  /router\.replace\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(store\.readingBook\),\s*\}\)/,
-  'BookChapter must replace the current chapter route query when reading progress changes.',
+  /router\.replace\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(store\.readingBook,\s*route\.query\),\s*\}\)/,
+  'BookChapter must replace the current chapter route query while preserving non-reading query parameters.',
 )
 
 assertContains(

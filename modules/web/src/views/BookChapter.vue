@@ -131,7 +131,7 @@ import {
   setLocalStorageItem,
   setSessionStorageItem,
 } from '@/utils/browserStorage'
-import { getChapterQuery } from '@/utils/chapterLink'
+import { getChapterQuery, getPreservedRouteQuery } from '@/utils/chapterLink'
 import { isNullOrBlank } from '@/utils/utils'
 
 const content = ref()
@@ -387,11 +387,14 @@ const router = useRouter()
 const syncChapterRouteProgress = () => {
   router.replace({
     path: '/chapter',
-    query: getChapterQuery(store.readingBook),
+    query: getChapterQuery(store.readingBook, route.query),
   })
 }
 const toShelf = () => {
-  router.push('/')
+  router.push({
+    path: '/',
+    query: getPreservedRouteQuery(route.query),
+  })
 }
 
 // 获取章节内容

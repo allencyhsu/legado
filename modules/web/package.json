@@ -14,6 +14,7 @@
     "build-only": "vite build",
     "test:mobile-layout": "node scripts/check-mobile-bookshelf-layout.mjs",
     "test:mobile-activation": "node scripts/check-mobile-book-activation.mjs",
+    "test:history-router": "node scripts/check-history-router.mjs",
     "test:cover-safety": "node scripts/check-cover-request-safety.mjs",
     "test:reading-state": "node scripts/check-reading-state-resilience.mjs",
     "type-check": "vue-tsc --build --force",

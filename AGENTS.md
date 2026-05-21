@@ -18,6 +18,7 @@ npm run type-check
 npm run test:mobile-layout
 npm run test:mobile-activation
 npm run test:reading-state
+npm run test:history-router
 npm run test:cover-safety
 npm run build-only
 

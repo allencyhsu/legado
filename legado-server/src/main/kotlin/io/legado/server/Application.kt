@@ -71,43 +71,68 @@ fun main(args: Array<String>) {
     bookService.scanBooksDirectory()
 
     embeddedServer(Netty, port = port) {
-        install(ContentNegotiation) {
-            gson {
-                setPrettyPrinting()
-                disableHtmlEscaping()
-            }
-        }
-
-        install(CORS) {
-            anyHost()
-            allowHeader(HttpHeaders.ContentType)
-            allowMethod(HttpMethod.Get)
-            allowMethod(HttpMethod.Post)
-            allowMethod(HttpMethod.Options)
-        }
-
-        install(CallLogging)
-
-        install(StatusPages) {
-            exception<Throwable> { call, cause ->
-                logger.error("Unhandled exception", cause)
-                call.respond(
-                    HttpStatusCode.InternalServerError,
-                    ReturnData.error(cause.message ?: "Unknown error")
-                )
-            }
-        }
-
-        routing {
-            // API routes
-            bookRoutes(bookService)
-            progressRoutes(bookService)
-            ttsRoutes(httpClient, ttsUrl)
-
-            // Static Vue frontend
-            staticResources("/", "web") {
-                default("index.html")
-            }
-        }
+        configureLegadoServer(bookService, httpClient, ttsUrl)
     }.start(wait = true)
+}
+
+fun Application.configureLegadoServer(
+    bookService: BookService,
+    httpClient: HttpClient,
+    ttsUrl: String
+) {
+    install(ContentNegotiation) {
+        gson {
+            setPrettyPrinting()
+            disableHtmlEscaping()
+        }
+    }
+
+    install(CORS) {
+        anyHost()
+        allowHeader(HttpHeaders.ContentType)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Options)
+    }
+
+    install(CallLogging)
+
+    install(StatusPages) {
+        exception<Throwable> { call, cause ->
+            logger.error("Unhandled exception", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                ReturnData.error(cause.message ?: "Unknown error")
+            )
+        }
+    }
+
+    routing {
+        bookRoutes(bookService)
+        progressRoutes(bookService)
+        ttsRoutes(httpClient, ttsUrl)
+
+        staticResources("/", "web") {
+            default("index.html")
+        }
+
+        get("/chapter") {
+            call.respondVueApp()
+        }
+        get("/bookSource") {
+            call.respondVueApp()
+        }
+        get("/rssSource") {
+            call.respondVueApp()
+        }
+    }
+}
+
+private suspend fun ApplicationCall.respondVueApp() {
+    val indexHtml = Application::class.java.classLoader
+        .getResource("web/index.html")
+        ?.readText()
+        ?: error("Vue app resource not found")
+
+    respondText(indexHtml, ContentType.Text.Html)
 }

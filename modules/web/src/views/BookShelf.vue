@@ -97,6 +97,7 @@ import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
 
 const store = useBookStore()
+const route = useRoute()
 const isNight = computed(() => store.isNight)
 
 /** shortcuts of `store.setConfig` */
@@ -282,7 +283,7 @@ const toDetail = (
   setLocalStorageItem('readingRecent', JSON.stringify(nextReadingBook))
   router.push({
     path: '/chapter',
-    query: getChapterQuery(nextReadingBook),
+    query: getChapterQuery(nextReadingBook, route.query),
   })
 }
 
