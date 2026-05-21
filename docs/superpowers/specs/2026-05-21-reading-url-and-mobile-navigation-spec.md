@@ -1,20 +1,124 @@
-# Reading URL and Mobile Navigation Development Spec
+# WSL2 Reading Server and Mobile Web Development Spec
 
 **Owner:** Allen
 **Date:** 2026-05-21
-**Related commits:** `cbc75e35d`, `50a5f9a5c`, `9436ad5c6`, `019bec4b3`
+**Branch:** `wsl2`
+**Base commit:** `40647f528` (`master`, `origin/master`)
+**Documented range:** `master..wsl2`
 
 ## Purpose
 
-This document records the implemented browser-routing and mobile-reading changes for the local Legado web reader. The work addresses two user-facing problems:
+This document records the full `wsl2` branch development line from the branch point through the latest implementation commit before this document update. It covers the local Legado server, deployment documentation, TTS integration, mobile browser reliability fixes, browser-history routing, token-preserving chapter URLs, and mobile chapter tap hotspots.
 
-- Mobile/external-browser reading state was not visible in the real URL because the app used hash routing.
-- Mobile Brave users had to tap once to show the toolbar before they could tap previous/next chapter.
+The work began by adding a JVM/Ktor reading server for WSL2/Linux and evolved into a mobile-friendly external browser reading workflow behind Nginx token authentication.
 
-The implementation makes chapter URLs observable by the browser, Nginx, and reload/bookmark behavior, then adds transparent mobile tap hotspots for faster chapter navigation.
+## Branch Commit Chronology
+
+The `wsl2` branch contains these commits after `40647f528`:
+
+| Commit | Summary | Development Record |
+| ------ | ------- | ------------------ |
+| `52d8dfbc1` | 新增 legado-server: WSL2/JVM 本地書籍閱讀服務 | Added the standalone `legado-server` Ktor/JVM service for reading local books through a browser. |
+| `5a2497bac` | 新增 legado-server 部署文件: Ubuntu 22.04 部署指南 | Added Ubuntu deployment guidance for the server service. |
+| `50595ea2d` | 新增項目文檔: 開發指南與架構分析 | Added project development and architecture documentation. |
+| `388ea6a27` | 新增 TTS 朗讀功能：Kokoro-FastAPI 整合 | Integrated Kokoro-FastAPI TTS playback support. |
+| `98f06a93a` | TTS 朗讀完自動跳轉下一章繼續播放 | Added TTS auto-advance to the next chapter after playback finishes. |
+| `0a0ed8ef9` | Fix mobile web bookshelf selection | Fixed mobile bookshelf selection behavior. |
+| `a192c079e` | Fix mobile reading state fallback | Added mobile-safe reading-state recovery fallbacks. |
+| `677dc0eab` | Fix mobile book tap activation | Improved mobile book tap activation in scrollable lists. |
+| `a06729f84` | Add native chapter links for mobile | Added native anchor chapter links for mobile navigation fallback. |
+| `2d57e6942` | Add native recent reading link | Added native href support for recent-reading entry. |
+| `6b5713c31` | Preserve native mobile chapter navigation | Preserved native mobile navigation instead of blocking it with JavaScript-only routing. |
+| `41af48697` | Stop serving txt files as covers | Prevented TXT book content from being served as cover images. |
+| `cc5ed7da6` | Document frontend packaging workflow | Documented required frontend build and server-resource embedding workflow. |
+| `1bdb1df3b` | Require Allen in assistant responses | Added the agent response rule requiring the name "Allen". |
+| `cbc75e35d` | Sync chapter progress to route query | Synchronized chapter progress into route query while reading. |
+| `50a5f9a5c` | Use browser history for chapter URLs | Replaced hash routing with browser-history routing and added server SPA fallback. |
+| `9436ad5c6` | Document JAR reupload requirement | Documented that changed JARs must be rebuilt and re-uploaded before deployment. |
+| `14b363cb3` | Add Codex repository guidance | Added Codex guidance files for repository and server work. |
+| `019bec4b3` | Add mobile chapter tap hotspots | Added mobile bottom-corner previous/next chapter tap hotspots. |
+| `c75388a49` | Document reading URL and mobile navigation spec | Added the first version of this development specification. |
+
+## Development Areas
+
+### WSL2 Local Reading Server
+
+The branch introduced `legado-server`, a JVM-only local reading service intended for WSL2/Linux deployment. The service provides browser access to local TXT/EPUB books and exposes Legado-compatible web APIs for bookshelf, catalog, chapter content, reading progress, read config, cover, and TTS-related routes.
+
+Core characteristics:
+
+- Ktor 3.0.0 with Netty.
+- SQLite storage through Exposed.
+- Local filesystem book scanning.
+- TXT and EPUB parsing.
+- Static Vue frontend served from embedded resources under `legado-server/src/main/resources/web/`.
+- Standalone fat JAR produced by `legado-server`'s `shadowJar` task.
+
+### Deployment and Project Documentation
+
+The branch added deployment and repository guidance for operating the WSL2 server, including Ubuntu service setup, server architecture notes, and Codex/agent instructions.
+
+Important operational rules established on the branch:
+
+- The frontend must be built from `modules/web/`.
+- `modules/web/dist/` must be copied into `legado-server/src/main/resources/web/`.
+- `./gradlew test shadowJar` must be run from `legado-server/`, not from the repository root.
+- Generated embedded frontend assets must be committed with frontend source changes.
+- If code changes after a JAR was uploaded, rebuild and upload the JAR again before installation.
+
+### TTS Reading
+
+The branch integrated TTS support through Kokoro-FastAPI and added auto-advance behavior when a chapter finishes playback.
+
+Key behavior:
+
+- `TtsPlayer.vue` provides playback controls.
+- Server TTS routes proxy speech/voice requests.
+- Reading view tracks TTS state.
+- When TTS finishes a chapter and another chapter exists, the reader loads the next chapter and continues playback.
+
+### Mobile Browser Reliability
+
+Several commits focused on mobile browser behavior, especially mobile Brave and external access through Nginx.
+
+Implemented reliability improvements:
+
+- Mobile bookshelf selection no longer depends only on fragile click behavior.
+- Reading state can be recovered from route query, session storage, Pinia state, and recent-reading local storage.
+- Book rows and recent-reading entries have native hrefs so mobile browsers can navigate even if JavaScript click handling is unreliable.
+- Native navigation is intentionally preserved for mobile fallback.
+- Cover serving avoids returning TXT book bytes as image data.
+
+### Browser URL and Routing
+
+The later branch work addressed the problem that hash-router chapter state is not visible to Nginx or backend logs and can be awkward for reload/bookmark behavior.
+
+The implemented route behavior is:
+
+- Vue Router uses browser history instead of hash history.
+- Chapter links use `/chapter?...` instead of `#/chapter?...`.
+- Server fallback returns the Vue app for direct `/chapter`, `/bookSource`, and `/rssSource` loads.
+- Route query is the source for current book/chapter recovery when present.
+
+### Mobile Chapter Hotspots
+
+The newest feature adds mobile-only transparent previous/next chapter tap zones to avoid opening the toolbar just to change chapter.
+
+Behavior:
+
+- Bottom-left transparent hotspot triggers previous chapter.
+- Bottom-right transparent hotspot triggers next chapter.
+- The center tap area still toggles the toolbar.
+- Hotspots use `@click.stop` so they do not toggle the toolbar.
+- Hotspots render only in mobile `miniInterface` mode.
 
 ## Goals
 
+- Provide a working WSL2/JVM local book reading server.
+- Serve local books through a browser using Legado-compatible API shapes.
+- Support local deployment as a systemd service.
+- Support TTS playback and chapter auto-advance.
+- Make mobile browser bookshelf and chapter activation reliable.
 - Use real browser-history URLs such as `/chapter?...` instead of `#/chapter?...`.
 - Preserve Nginx/token authentication query parameters while updating reading-state query parameters.
 - Let direct browser loads of `/chapter`, `/bookSource`, and `/rssSource` return the Vue app.
@@ -29,6 +133,7 @@ The implementation makes chapter URLs observable by the browser, Nginx, and relo
 - This does not add page-turn animation.
 - This does not change chapter loading semantics, catalog parsing, or book progress persistence APIs.
 - This does not modify Nginx configuration directly; it only documents that public real-path routing must be verified through Nginx after deployment.
+- This does not merge `wsl2` back to `master`; it records the branch work.
 
 ## Implemented Behavior
 
