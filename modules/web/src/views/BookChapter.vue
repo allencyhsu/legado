@@ -131,6 +131,7 @@ import {
   setLocalStorageItem,
   setSessionStorageItem,
 } from '@/utils/browserStorage'
+import { getChapterQuery } from '@/utils/chapterLink'
 import { isNullOrBlank } from '@/utils/utils'
 
 const content = ref()
@@ -383,6 +384,12 @@ const toBottom = () => {
 
 // 书架路由切换
 const router = useRouter()
+const syncChapterRouteProgress = () => {
+  router.replace({
+    path: '/chapter',
+    query: getChapterQuery(store.readingBook),
+  })
+}
 const toShelf = () => {
   router.push('/')
 }
@@ -466,6 +473,7 @@ const saveReadingBookProgressToBrowser = (index: number, pos: number) => {
   // 保存pinia
   chapterIndex.value = index
   chapterPos.value = pos
+  syncChapterRouteProgress()
 }
 
 // 进度同步

@@ -47,6 +47,24 @@ assertContains(
 
 assertContains(
   bookChapter,
+  /import\s+\{\s*getChapterQuery\s*\}\s+from\s+['"]@\/utils\/chapterLink['"]/,
+  'BookChapter must reuse getChapterQuery when synchronizing reading progress to the URL.',
+)
+
+assertContains(
+  bookChapter,
+  /router\.replace\(\{\s*path:\s*['"]\/chapter['"],\s*query:\s*getChapterQuery\(store\.readingBook\),\s*\}\)/,
+  'BookChapter must replace the current chapter route query when reading progress changes.',
+)
+
+assertContains(
+  bookChapter,
+  /const saveReadingBookProgressToBrowser[\s\S]*chapterIndex\.value\s*=\s*index[\s\S]*chapterPos\.value\s*=\s*pos[\s\S]*syncChapterRouteProgress\(\)/,
+  'BookChapter must sync the route after updating Pinia chapter progress.',
+)
+
+assertContains(
+  bookChapter,
   /parseReadingRecent\(\)/,
   'BookChapter must fall back to the persisted recent book when sessionStorage is missing.',
 )
