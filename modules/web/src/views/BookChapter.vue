@@ -82,6 +82,20 @@
       </div>
     </div>
     <div class="chapter-bar"></div>
+    <button
+      v-if="miniInterface"
+      class="mobile-chapter-hotspot previous"
+      type="button"
+      aria-label="上一章"
+      @click.stop="toPreChapter"
+    ></button>
+    <button
+      v-if="miniInterface"
+      class="mobile-chapter-hotspot next"
+      type="button"
+      aria-label="下一章"
+      @click.stop="toNextChapter"
+    ></button>
     <div class="chapter" ref="content" :style="chapterTheme">
       <div class="content">
         <div class="top-bar" ref="top"></div>
@@ -982,6 +996,36 @@ onBeforeRouteLeave(async (to, from, next) => {
       padding: 0 20px;
       box-sizing: border-box;
     }
+
+    .mobile-chapter-hotspot {
+      position: fixed;
+      bottom: 0;
+      z-index: 90;
+      width: 26vw;
+      height: 34vh;
+      min-width: 96px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      appearance: none;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-chapter-hotspot.previous {
+      left: 0;
+    }
+
+    .mobile-chapter-hotspot.next {
+      right: 0;
+    }
+  }
+}
+
+@media screen and (min-width: 777px) {
+  .mobile-chapter-hotspot {
+    display: none;
   }
 }
 </style>

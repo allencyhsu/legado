@@ -17,6 +17,7 @@ cd modules/web
 npm run type-check
 npm run test:mobile-layout
 npm run test:mobile-activation
+npm run test:mobile-chapter-hotspots
 npm run test:reading-state
 npm run test:history-router
 npm run test:cover-safety
