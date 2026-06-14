@@ -43,12 +43,14 @@ fun Route.ttsRoutes(httpClient: HttpClient, ttsBaseUrl: String) {
             return@post
         }
 
-        if (request.text.isBlank()) {
+        val normalizedText = normalizeTtsInput(request.text)
+
+        if (normalizedText.isBlank()) {
             call.respond(ReturnData.error("Text cannot be empty"))
             return@post
         }
 
-        logger.info("TTS request: voice=${request.voice}, speed=${request.speed}, text=${request.text.take(50)}...")
+        logger.info("TTS request: voice=${request.voice}, speed=${request.speed}, text=${normalizedText.take(50)}...")
 
         try {
             logger.info("Proxying to $ttsBaseUrl/v1/audio/speech ...")
@@ -56,7 +58,7 @@ fun Route.ttsRoutes(httpClient: HttpClient, ttsBaseUrl: String) {
                 contentType(ContentType.Application.Json)
                 setBody(buildString {
                     append("""{"model":"kokoro","voice":"${request.voice}"""")
-                    append(""","input":${com.google.gson.Gson().toJson(request.text)}""")
+                    append(""","input":${com.google.gson.Gson().toJson(normalizedText)}""")
                     append(""","response_format":"mp3","speed":${request.speed}""")
                     append("}")
                 })
