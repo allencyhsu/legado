@@ -70,8 +70,12 @@ object BookRepository {
     }
 
     fun deleteBook(bookUrl: String): Unit = transaction {
-        // Chapters are deleted by CASCADE
-        Database.Books.deleteWhere { Database.Books.bookUrl eq bookUrl }
+        deleteBookRows(bookUrl)
+    }
+
+    fun deleteBooks(bookUrls: Set<String>): Int = transaction {
+        bookUrls.forEach { deleteBookRows(it) }
+        bookUrls.size
     }
 
     fun getChapters(bookUrl: String): List<BookChapter> = transaction {
@@ -174,6 +178,12 @@ object BookRepository {
         startFragmentId = this[Database.Chapters.startFragmentId],
         endFragmentId = this[Database.Chapters.endFragmentId]
     )
+
+    private fun deleteBookRows(bookUrl: String) {
+        Database.Chapters.deleteWhere { Database.Chapters.bookUrl eq bookUrl }
+        Database.ReadProgress.deleteWhere { Database.ReadProgress.bookUrl eq bookUrl }
+        Database.Books.deleteWhere { Database.Books.bookUrl eq bookUrl }
+    }
 }
 
 data class ReadProgressData(

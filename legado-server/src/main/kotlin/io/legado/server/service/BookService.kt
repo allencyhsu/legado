@@ -48,6 +48,15 @@ class BookService(private val booksDir: String) {
                 }
             }
 
+        val staleBookUrls = BookRepository.getAllBooks()
+            .filter { it.isLocal && (it.isTxt || it.isEpub) && !File(it.bookUrl).exists() }
+            .map { it.bookUrl }
+            .toSet()
+        val prunedCount = BookRepository.deleteBooks(staleBookUrls)
+        if (prunedCount > 0) {
+            logger.info("Pruned $prunedCount stale books")
+        }
+
         logger.info("Imported $count books")
     }
 
