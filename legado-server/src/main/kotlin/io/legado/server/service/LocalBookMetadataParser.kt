@@ -32,7 +32,12 @@ object LocalBookMetadataParser {
                 kind = kind?.takeIf { it.isNotBlank() }
             )
         } catch (e: Exception) {
-            logger.debug("Falling back to filename metadata for {}", file.absolutePath, e)
+            logger.debug(
+                "Falling back to filename metadata for {} ({}: {})",
+                file.absolutePath,
+                e::class.java.simpleName,
+                e.message
+            )
             LocalBookMetadata(name = fallbackName)
         }
     }
