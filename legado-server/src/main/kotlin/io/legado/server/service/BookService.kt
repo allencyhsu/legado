@@ -64,15 +64,29 @@ class BookService(private val booksDir: String) {
      * Import a single book file
      */
     private fun importBook(file: File) {
+        val book = LocalBookMetadataParser.toBook(file, File(booksDir))
         val existing = BookRepository.getBook(file.absolutePath)
+        val metadataChanged = existing?.let {
+            it.name != book.name || it.author != book.author || it.kind != book.kind
+        } ?: false
         if (existing != null && existing.lastCheckTime >= file.lastModified()) {
-            // Book already up to date
+            if (metadataChanged) {
+                BookRepository.upsertBook(
+                    existing.copy(
+                        name = book.name,
+                        author = book.author,
+                        kind = book.kind,
+                        originName = book.originName,
+                        tocUrl = book.tocUrl,
+                        lastCheckTime = file.lastModified()
+                    )
+                )
+            }
             return
         }
 
         logger.info("Importing: ${file.name}")
 
-        val book = Book.fromFile(file)
         val chapters = parseChapters(book)
 
         val updatedBook = book.copy(
