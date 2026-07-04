@@ -6,6 +6,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 
 const api = read('src/api/api.ts')
 const bookTypes = read('src/book.d.ts')
+const bookStore = read('src/store/bookStore.ts')
 const bookShelf = read('src/views/BookShelf.vue')
 const setRemoteUrlBlock =
   bookShelf.match(
@@ -83,6 +84,42 @@ assertContains(
   bookShelf,
   /removeLocalStorageItem\(['"]readingRecent['"]\)/,
   'BookShelf must clear the local readingRecent fallback when deleting matching history.',
+)
+
+assertContains(
+  bookShelf,
+  /type ReadingHistoryItem = \{[\s\S]*?fromLocalRecent: boolean[\s\S]*?\}/,
+  'BookShelf reading history items must track whether they came from the local readingRecent fallback.',
+)
+
+assertContains(
+  bookShelf,
+  /const toHistoryItem = \(book: Book\): ReadingHistoryItem => \(\{[\s\S]*?fromLocalRecent: false,[\s\S]*?\}\)/,
+  'BookShelf server reading history items must opt out of local fallback navigation mode.',
+)
+
+assertContains(
+  bookShelf,
+  /const toRecentHistoryItem = \(\): ReadingHistoryItem \| undefined => \{[\s\S]*?fromLocalRecent: true,[\s\S]*?\}/,
+  'BookShelf local readingRecent fallback items must opt into fallback navigation mode.',
+)
+
+assertContains(
+  bookShelf,
+  /const openHistoryItem = \(item: ReadingHistoryItem, event\?: MouseEvent\) => \{[\s\S]*?item\.isSeachBook,[\s\S]*?item\.fromLocalRecent,[\s\S]*?\}/,
+  'BookShelf history clicks must only use fallback navigation for local readingRecent items.',
+)
+
+assertContains(
+  bookShelf,
+  /const loadShelf = async \(\) => \{[\s\S]*?await store\.saveBookProgress\(\{\s*beacon:\s*false\s*\}\)[\s\S]*?await store\.loadBookShelf\(\)[\s\S]*?await loadReadingHistory\(\)[\s\S]*?\}/,
+  'BookShelf loadShelf must await a non-beacon save before refreshing bookshelf and server reading history.',
+)
+
+assertContains(
+  bookStore,
+  /async saveBookProgress\(options: \{\s*beacon\?: boolean\s*\} = \{\}\) \{[\s\S]*?const \{ beacon = true \} = options[\s\S]*?if \(beacon\) \{[\s\S]*?return API\.saveBookProgressWithBeacon\(this\.bookProgress\)[\s\S]*?\}[\s\S]*?return API\.saveBookProgress\(this\.bookProgress\)[\s\S]*?\}/,
+  'bookStore.saveBookProgress must support an awaitable non-beacon path while keeping beacon as the default behavior.',
 )
 
 assertContains(

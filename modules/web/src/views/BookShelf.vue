@@ -162,6 +162,7 @@ type ReadingHistoryItem = {
   chapterPos: number
   chapterTitle: string
   isSeachBook?: boolean
+  fromLocalRecent: boolean
 }
 
 const store = useBookStore()
@@ -196,6 +197,7 @@ const toHistoryItem = (book: Book): ReadingHistoryItem => ({
   chapterTitle:
     book.durChapterTitle || `第${(book.durChapterIndex ?? 0) + 1}章`,
   isSeachBook: false,
+  fromLocalRecent: false,
 })
 
 const toRecentHistoryItem = (): ReadingHistoryItem | undefined => {
@@ -208,6 +210,7 @@ const toRecentHistoryItem = (): ReadingHistoryItem | undefined => {
     chapterPos: readingRecent.value.chapterPos,
     chapterTitle: '本机记录',
     isSeachBook: readingRecent.value.isSeachBook,
+    fromLocalRecent: true,
   }
 }
 
@@ -401,7 +404,7 @@ const openHistoryItem = (item: ReadingHistoryItem, event?: MouseEvent) => {
     item.chapterIndex,
     item.chapterPos,
     item.isSeachBook,
-    true,
+    item.fromLocalRecent,
   )
 }
 
@@ -488,7 +491,7 @@ const clearReadingHistory = async () => {
 
 const loadShelf = async () => {
   await store.loadWebConfig()
-  await store.saveBookProgress()
+  await store.saveBookProgress({ beacon: false })
   //确保各种网络情况下同步请求先完成
   await store.loadBookShelf()
   await loadReadingHistory()
