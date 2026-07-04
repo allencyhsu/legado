@@ -1,4 +1,5 @@
 import type { Book } from '@/book'
+import OpenCC from 'opencc-js'
 
 export type BookshelfAuthorGroup = {
   author: string
@@ -13,48 +14,22 @@ export type BookshelfCategoryGroup = {
 }
 
 const SEARCH_PUNCTUATION = /[\s《》<>「」『』[\]【】()（）:：,，.。\-－_]/g
-const SIMPLIFIED_TRADITIONAL_GROUPS: Array<readonly string[]> = [
-  ['愛', '爱'],
-  ['潛', '潜'],
-  ['烏', '乌'],
-  ['賊', '贼'],
-  ['詭', '诡'],
-  ['龍', '龙'],
-  ['義', '义'],
-  ['變', '变'],
-  ['貓', '猫'],
-  ['陳', '陈'],
-  ['詞', '词'],
-  ['懶', '懒'],
-  ['調', '调'],
-  ['書', '书'],
-  ['職', '职'],
-  ['蕭', '萧'],
-  ['風', '风'],
-  ['雲', '云'],
-  ['聽', '听'],
-  ['濤', '涛'],
-  ['無', '无'],
-  ['驚', '惊'],
-  ['樂', '乐'],
-]
-
-const variantMap = new Map<string, string>(
-  SIMPLIFIED_TRADITIONAL_GROUPS.flatMap(group =>
-    group.map(char => [char, group[0]] as const),
-  ),
-)
-
-const normalizeVariants = (value: string) =>
-  Array.from(value)
-    .map(char => variantMap.get(char) ?? char)
-    .join('')
+const toSimplified = OpenCC.Converter({ from: 'tw', to: 'cn' })
+const normalizedSearchCache = new Map<string, string>()
 
 export const normalizeBookshelfSearch = (value?: string): string => {
-  return normalizeVariants((value ?? '').trim().toLowerCase()).replace(
-    SEARCH_PUNCTUATION,
-    '',
-  )
+  const trimmedValue = (value ?? '').trim()
+  if (trimmedValue === '') return ''
+
+  const cachedValue = normalizedSearchCache.get(trimmedValue)
+  if (cachedValue) return cachedValue
+
+  const normalizedValue = toSimplified(trimmedValue)
+    .toLowerCase()
+    .replace(SEARCH_PUNCTUATION, '')
+
+  normalizedSearchCache.set(trimmedValue, normalizedValue)
+  return normalizedValue
 }
 
 export const bookMatchesLocalSearch = (book: Book, query: string): boolean => {

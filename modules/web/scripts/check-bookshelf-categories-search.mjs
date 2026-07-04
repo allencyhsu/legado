@@ -1,5 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
+import { pathToFileURL } from 'node:url'
+import { build } from 'esbuild'
 
 const root = path.resolve(import.meta.dirname, '..')
 const read = file => fs.readFileSync(path.join(root, file), 'utf8')
@@ -18,6 +21,75 @@ const packageJson = read('package.json')
 const agents = readRepo('AGENTS.md')
 const bookShelf = read('src/views/BookShelf.vue')
 const bookItems = read('src/components/BookItems.vue')
+const helperPath = path.join(root, 'src/utils/bookshelfGrouping.ts')
+const bundleDir = fs.mkdtempSync(path.join(os.tmpdir(), 'legado-bookshelf-grouping-'))
+const bundledHelperPath = path.join(bundleDir, 'bookshelfGrouping.mjs')
+
+await build({
+  entryPoints: [helperPath],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  outfile: bundledHelperPath,
+})
+
+const {
+  filterBookshelfBooks,
+  groupBookshelfBooks,
+  normalizeBookshelfSearch,
+} = await import(`${pathToFileURL(bundledHelperPath).href}?t=${Date.now()}`)
+
+const assert = (condition, message) => {
+  if (!condition) {
+    console.error(message)
+    process.exitCode = 1
+  }
+}
+
+const assertEqual = (actual, expected, message) => {
+  if (actual !== expected) {
+    console.error(`${message}\nExpected: ${expected}\nActual: ${actual}`)
+    process.exitCode = 1
+  }
+}
+
+const books = [
+  {
+    name: '乱世国医',
+    author: '陳醫生',
+    kind: '历史',
+    originName: '本地《典藏》',
+    bookUrl: 'https://shelf.example/books/luan-shi-guo-yi',
+  },
+  {
+    name: '后台时代',
+    author: '后勤作者',
+    kind: '技术',
+    originName: '雲端書庫',
+    bookUrl: 'https://shelf.example/books/hou-tai-shi-dai',
+  },
+  {
+    name: '體育周刊',
+    author: '王教練',
+    kind: '運動',
+    originName: '體育館藏',
+    bookUrl: 'https://shelf.example/books/ti-yu-zhou-kan',
+  },
+  {
+    name: '《Punctuation-Test》',
+    author: 'Case-Sensitive Author',
+    kind: 'Reference',
+    originName: 'Archive:Alpha',
+    bookUrl: 'https://shelf.example/books/punctuation_test',
+  },
+  {
+    name: 'Fallback Book',
+    author: '',
+    kind: '',
+    originName: 'Unknown Shelf',
+    bookUrl: 'https://shelf.example/books/fallback',
+  },
+]
 
 assertContains(
   helper,
@@ -47,8 +119,8 @@ assertContains(
 
 assertContains(
   helper,
-  /const SIMPLIFIED_TRADITIONAL_GROUPS: Array<readonly string\[]> = \[[\s\S]*?愛[\s\S]*?爱[\s\S]*?詭[\s\S]*?诡[\s\S]*?\]/,
-  'Search normalization must centralize simplified/traditional groups.',
+  /from\s+['"]opencc-js['"]/,
+  'Search normalization must use opencc-js for comprehensive simplified/traditional normalization.',
 )
 
 assertContains(
@@ -67,6 +139,18 @@ assertContains(
   packageJson,
   /"test:bookshelf-categories": "node scripts\/check-bookshelf-categories-search\.mjs"/,
   'package.json must expose test:bookshelf-categories.',
+)
+
+assertContains(
+  packageJson,
+  /"opencc-js": "1\.4\.0"/,
+  'package.json must include opencc-js 1.4.0 for simplified/traditional normalization.',
+)
+
+assertContains(
+  packageJson,
+  /"esbuild": "\^0\.21\.5"/,
+  'package.json must declare esbuild as a direct devDependency because the bookshelf category test imports it directly.',
 )
 
 assertContains(
@@ -169,6 +253,74 @@ assertContains(
   bookItems,
   /\.books-wrapper\.embedded\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*visible;/,
   'Embedded BookItems must not create nested scroll containers.',
+)
+
+assertEqual(
+  normalizeBookshelfSearch('《亂世：國醫》'),
+  '乱世国医',
+  'normalizeBookshelfSearch must strip punctuation and canonicalize traditional text to simplified search form.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, '亂世國醫').length,
+  1,
+  'Local bookshelf search must match traditional query 亂世國醫 against simplified title 乱世国医.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, '後台時代').length,
+  1,
+  'Local bookshelf search must match traditional query 後台時代 against simplified title 后台时代.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, '体育周刊').length,
+  1,
+  'Local bookshelf search must match simplified query 体育周刊 against traditional title 體育周刊.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, 'case sensitive author').length,
+  1,
+  'Local bookshelf search must match authors case-insensitively.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, 'reference').length,
+  1,
+  'Local bookshelf search must match category names.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, 'archivealpha').length,
+  1,
+  'Local bookshelf search must match originName with punctuation removed.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, 'punctuationtest').length,
+  1,
+  'Local bookshelf search must match title text with punctuation removed.',
+)
+
+assertEqual(
+  filterBookshelfBooks(books, 'ti-yu-zhou-kan').length,
+  1,
+  'Local bookshelf search must match bookUrl content.',
+)
+
+const groupedBooks = groupBookshelfBooks(books)
+const fallbackGroup = groupedBooks.find(group => group.kind === '未分類')
+const fallbackAuthorGroup = fallbackGroup?.authorGroups.find(
+  authorGroup => authorGroup.author === '未知作者',
+)
+
+assert(Boolean(fallbackGroup), 'groupBookshelfBooks must use 未分類 for missing kind values.')
+assert(Boolean(fallbackAuthorGroup), 'groupBookshelfBooks must use 未知作者 for missing author values.')
+assertEqual(
+  fallbackAuthorGroup?.count,
+  1,
+  'Fallback author groups must preserve the underlying book count.',
 )
 
 if (process.exitCode) process.exit(process.exitCode)
