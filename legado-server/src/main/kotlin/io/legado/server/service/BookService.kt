@@ -66,16 +66,22 @@ class BookService(private val booksDir: String) {
     private fun importBook(file: File) {
         val book = LocalBookMetadataParser.toBook(file, File(booksDir))
         val existing = BookRepository.getBook(file.absolutePath)
+        val mergedAuthor = if (book.author.isNotBlank()) {
+            book.author
+        } else {
+            existing?.author.orEmpty()
+        }
+        val mergedKind = book.kind ?: existing?.kind
         val metadataChanged = existing?.let {
-            it.name != book.name || it.author != book.author || it.kind != book.kind
+            it.name != book.name || it.author != mergedAuthor || it.kind != mergedKind
         } ?: false
         if (existing != null && existing.lastCheckTime >= file.lastModified()) {
             if (metadataChanged) {
                 BookRepository.upsertBook(
                     existing.copy(
                         name = book.name,
-                        author = book.author,
-                        kind = book.kind,
+                        author = mergedAuthor,
+                        kind = mergedKind,
                         originName = book.originName,
                         tocUrl = book.tocUrl,
                         lastCheckTime = file.lastModified()
