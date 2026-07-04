@@ -113,6 +113,12 @@ assertContains(
 
 assertContains(
   bookShelf,
+  /fromReadRecentClick[\s\S]*?searchWord\.value = bookName[\s\S]*?searchBook\(\)[\s\S]*?nextTick\(\(\) => \{[\s\S]*?suppressSearchWordReset = false[\s\S]*?\}\)/,
+  'Recent-book auto search must explicitly clear the suppression flag after the one-shot online search so same-value assignments cannot leak it.',
+)
+
+assertContains(
+  bookShelf,
   /const localBooks = computed\(\(\) => filterBookshelfBooks\(shelf\.value, searchWord\.value\)\)/,
   'BookShelf.vue must filter local books with filterBookshelfBooks.',
 )

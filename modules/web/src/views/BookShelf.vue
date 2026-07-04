@@ -410,6 +410,9 @@ const toDetail = (
     suppressSearchWordReset = true
     searchWord.value = bookName
     searchBook()
+    void nextTick(() => {
+      suppressSearchWordReset = false
+    })
     return
   }
   const nextReadingBook = {
