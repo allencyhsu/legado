@@ -7,6 +7,10 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 const api = read('src/api/api.ts')
 const bookTypes = read('src/book.d.ts')
 const bookShelf = read('src/views/BookShelf.vue')
+const setRemoteUrlBlock =
+  bookShelf.match(
+    /const setLegadoRetmoteUrl = \(\) => \{[\s\S]*?\n\}\n\nconst router = useRouter\(\)/,
+  )?.[0] ?? ''
 
 const assertContains = (content, pattern, message) => {
   if (!pattern.test(content)) {
@@ -61,6 +65,12 @@ assertContains(
   bookShelf,
   /API\.clearReadingHistory\(\)/,
   'BookShelf must clear all reading history through the API.',
+)
+
+assertContains(
+  setRemoteUrlBlock,
+  /setApiEntryPoint\([\s\S]*?(?:loadingWrapper\(loadShelf\(\)\)|loadReadingHistory\(\)|loadShelf\(\))/,
+  'BookShelf backend URL changes must refresh reading history after switching the API entry point.',
 )
 
 assertContains(

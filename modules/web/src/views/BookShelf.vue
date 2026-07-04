@@ -311,6 +311,7 @@ const setLegadoRetmoteUrl = () => {
                 setLocalStorageItem(baseURL_localStorage_key, url)
               }
               store.loadBookShelf()
+              void loadReadingHistory()
               done()
             })
             .catch(function (error) {
