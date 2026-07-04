@@ -15,16 +15,6 @@
         @keydown.space.prevent="handleKeyboardActivate(book)"
         @click="handleClick($event, book)"
       >
-        <div class="cover-img">
-          <img
-            class="cover"
-            :src="getCover(book)"
-            :key="book.coverUrl"
-            @error.once="proxyImage"
-            alt=""
-            loading="lazy"
-          />
-        </div>
         <div class="info">
           <div class="name">{{ book.name }}</div>
           <div class="sub">
@@ -61,9 +51,8 @@
 </template>
 <script setup lang="ts">
 import type { Book, SeachBook } from '@/book'
-import { dateFormat, isLegadoUrl } from '../utils/utils'
+import { dateFormat } from '../utils/utils'
 import { getChapterHref } from '@/utils/chapterLink'
-import API from '@api'
 const props = withDefaults(
   defineProps<{
     books: Array<Book | SeachBook>
@@ -77,8 +66,6 @@ const props = withDefaults(
 
 const emit = defineEmits(['bookClick'])
 const TAP_MOVEMENT_THRESHOLD = 10
-const DEFAULT_COVER_SRC =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
 let pointerStart:
   | {
@@ -131,14 +118,6 @@ const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
   activateBook(book)
   if (needsJsNavigation) event.preventDefault()
 }
-const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
-  if (coverUrl === undefined) return DEFAULT_COVER_SRC
-  return isLegadoUrl(coverUrl) ? API.getProxyCoverUrl(coverUrl) : coverUrl
-}
-const proxyImage = (evt: Event) => {
-  const target = evt.target as HTMLImageElement
-  target.src = API.getProxyCoverUrl(target.src)
-}
 
 const subJustify = computed(() =>
   props.isSearch ? 'space-between' : 'flex-start',
@@ -169,31 +148,16 @@ const subJustify = computed(() =>
       padding: 24px 24px;
       width: 360px;
       flex-direction: row;
-      justify-content: space-around;
-
-      .cover-img {
-        width: 84px;
-        height: 112px;
-        background: linear-gradient(145deg, #d8d0c2, #8f9b94);
-        border: 1px solid #d7d2c8;
-        box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.22);
-        box-sizing: border-box;
-
-        .cover {
-          width: 84px;
-          height: 112px;
-          object-fit: cover;
-        }
-      }
+      justify-content: flex-start;
 
       .info {
         display: flex;
         flex-direction: column;
-        justify-content: space-around;
+        justify-content: flex-start;
         align-items: left;
-        height: 112px;
-        margin-left: 20px;
+        gap: 8px;
         flex: 1;
+        min-width: 0;
         overflow: hidden;
 
         .name {

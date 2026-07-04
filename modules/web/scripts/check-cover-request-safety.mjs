@@ -23,22 +23,52 @@ const assertNotContains = (content, pattern, message) => {
   }
 }
 
-assertContains(
+assertNotContains(
   bookItems,
-  /const\s+DEFAULT_COVER_SRC\s*=/,
-  'BookItems must define a local default cover for books without coverUrl.',
+  /class=["']cover-img["']/,
+  'BookItems must not render a cover layout column.',
 )
 
-assertContains(
+assertNotContains(
   bookItems,
-  /coverUrl\s*===\s*undefined[\s\S]*DEFAULT_COVER_SRC/,
-  'Books without coverUrl must use the local default cover.',
+  /class=["']cover["']/,
+  'BookItems must not render cover image elements.',
+)
+
+assertNotContains(
+  bookItems,
+  /<img\b/,
+  'BookItems must not render image elements after removing cover layout.',
+)
+
+assertNotContains(
+  bookItems,
+  /\bcoverUrl\b/,
+  'BookItems must not read coverUrl after removing cover layout.',
+)
+
+assertNotContains(
+  bookItems,
+  /getCover|proxyImage|DEFAULT_COVER_SRC/,
+  'BookItems must not keep cover image fallback logic after removing cover layout.',
+)
+
+assertNotContains(
+  bookItems,
+  /API\.getProxyCoverUrl|isLegadoUrl/,
+  'BookItems must not request proxied cover URLs after removing cover layout.',
 )
 
 assertNotContains(
   bookItems,
   /coverUrl\s*===\s*undefined[\s\S]*API\.getProxyCoverUrl\(bookUrl\)/,
   'Books without coverUrl must not request /cover with bookUrl because local TXT files are huge.',
+)
+
+assertNotContains(
+  bookItems,
+  /height:\s*112px/,
+  'BookItems must not keep the old fixed cover-height row layout.',
 )
 
 if (!packageJson.scripts?.['test:cover-safety']) {
