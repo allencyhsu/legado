@@ -141,6 +141,21 @@ object BookRepository {
         }
     }
 
+    fun getReadingHistory(): List<Book> = transaction {
+        Database.Books.innerJoin(Database.ReadProgress)
+            .selectAll()
+            .orderBy(Database.ReadProgress.durChapterTime, SortOrder.DESC)
+            .map { it.toBook() }
+    }
+
+    fun deleteReadProgress(bookUrl: String): Int = transaction {
+        Database.ReadProgress.deleteWhere { Database.ReadProgress.bookUrl eq bookUrl }
+    }
+
+    fun clearReadProgress(): Int = transaction {
+        Database.ReadProgress.deleteAll()
+    }
+
     private fun ResultRow.toBook(): Book {
         val progress = getReadProgress(this[Database.Books.bookUrl])
         return Book(

@@ -205,6 +205,27 @@ class BookService(private val booksDir: String) {
     }
 
     /**
+     * Get server-backed reading history.
+     */
+    fun getReadingHistory(): List<Book> {
+        return BookRepository.getReadingHistory()
+    }
+
+    /**
+     * Delete one reading history item without deleting the book.
+     */
+    fun deleteReadingHistory(bookUrl: String): Int {
+        return BookRepository.deleteReadProgress(bookUrl)
+    }
+
+    /**
+     * Clear all reading history without deleting books.
+     */
+    fun clearReadingHistory(): Int {
+        return BookRepository.clearReadProgress()
+    }
+
+    /**
      * Get reading configuration
      */
     fun getReadConfig(): String = readConfig
