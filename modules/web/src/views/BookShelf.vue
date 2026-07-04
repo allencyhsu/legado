@@ -17,23 +17,77 @@
       </div>
       <div class="bottom-wrapper">
         <div class="recent-wrapper">
-          <div class="recent-title">最近阅读</div>
-          <div class="reading-recent">
-            <a
-              :href="getChapterHref(readingRecent)"
-              :class="{ 'no-point': readingRecent.bookUrl == '' }"
-              @click="handleRecentClick"
+          <div class="recent-title-row">
+            <div class="recent-title">阅读历史</div>
+            <el-button
+              v-if="readingHistoryItems.length > 0"
+              class="history-clear"
+              link
+              size="small"
+              type="danger"
+              :icon="DeleteIcon"
+              @click="clearReadingHistory"
             >
-              <el-tag
-                :type="
-                  readingRecent.name == '尚无阅读记录' ? 'warning' : 'primary'
-                "
-                class="recent-book"
-                size="large"
-              >
-                {{ readingRecent.name }}
-              </el-tag>
+              清空
+            </el-button>
+          </div>
+          <div class="reading-history">
+            <a
+              v-if="readingHistory.length === 0 && readingHistoryItems.length > 0"
+              :key="readingRecent.bookUrl"
+              class="history-item"
+              :href="getChapterHref(readingRecent)"
+              @click="handleHistoryClick($event, readingHistoryItems[0])"
+            >
+              <span class="history-main">
+                <span class="history-name">{{ readingHistoryItems[0].name }}</span>
+                <span class="history-chapter">{{
+                  readingHistoryItems[0].chapterTitle
+                }}</span>
+              </span>
+              <el-button
+                class="history-delete"
+                text
+                circle
+                size="small"
+                type="danger"
+                :icon="CloseBoldIcon"
+                :aria-label="`删除${readingHistoryItems[0].name}的阅读历史`"
+                @click.stop.prevent="deleteReadingHistory(readingHistoryItems[0])"
+              />
             </a>
+            <template v-else>
+              <a
+                v-for="item in readingHistoryItems"
+                :key="item.bookUrl"
+                class="history-item"
+                :href="getChapterHref(item)"
+                @click="handleHistoryClick($event, item)"
+              >
+                <span class="history-main">
+                  <span class="history-name">{{ item.name }}</span>
+                  <span class="history-chapter">{{ item.chapterTitle }}</span>
+                </span>
+                <el-button
+                  class="history-delete"
+                  text
+                  circle
+                  size="small"
+                  type="danger"
+                  :icon="CloseBoldIcon"
+                  :aria-label="`删除${item.name}的阅读历史`"
+                  @click.stop.prevent="deleteReadingHistory(item)"
+                />
+              </a>
+            </template>
+            <el-tag
+              v-if="readingHistoryItems.length === 0"
+              type="warning"
+              class="recent-book"
+              size="large"
+            >
+              尚无阅读记录
+            </el-tag>
           </div>
         </div>
         <div class="setting-wrapper">
@@ -78,7 +132,11 @@ import '@/assets/fonts/shelffont.css'
 import { useBookStore } from '@/store'
 import githubUrl from '@/assets/imgs/github.png'
 import { useLoading } from '@/hooks/loading'
-import { Search as SearchIcon } from '@element-plus/icons-vue'
+import {
+  CloseBold as CloseBoldIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+} from '@element-plus/icons-vue'
 import { baseURL_localStorage_key } from '@/api/axios'
 import API, {
   legado_http_entry_point,
@@ -95,6 +153,16 @@ import { getChapterHref, getChapterQuery } from '@/utils/chapterLink'
 import { validatorHttpUrl } from '@/utils/utils'
 import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
+
+type ReadingHistoryItem = {
+  name: string
+  author: string
+  bookUrl: string
+  chapterIndex: number
+  chapterPos: number
+  chapterTitle: string
+  isSeachBook?: boolean
+}
 
 const store = useBookStore()
 const route = useRoute()
@@ -116,6 +184,39 @@ const readingRecent = ref<typeof store.readingBook>({
   chapterIndex: 0,
   chapterPos: 0,
   isSeachBook: false,
+})
+const readingHistory = ref<Book[]>([])
+
+const toHistoryItem = (book: Book): ReadingHistoryItem => ({
+  name: book.name,
+  author: book.author,
+  bookUrl: book.bookUrl,
+  chapterIndex: book.durChapterIndex ?? 0,
+  chapterPos: book.durChapterPos ?? 0,
+  chapterTitle:
+    book.durChapterTitle || `第${(book.durChapterIndex ?? 0) + 1}章`,
+  isSeachBook: false,
+})
+
+const toRecentHistoryItem = (): ReadingHistoryItem | undefined => {
+  if (readingRecent.value.bookUrl === '') return undefined
+  return {
+    name: readingRecent.value.name,
+    author: readingRecent.value.author,
+    bookUrl: readingRecent.value.bookUrl,
+    chapterIndex: readingRecent.value.chapterIndex,
+    chapterPos: readingRecent.value.chapterPos,
+    chapterTitle: '本机记录',
+    isSeachBook: readingRecent.value.isSeachBook,
+  }
+}
+
+const readingHistoryItems = computed<ReadingHistoryItem[]>(() => {
+  if (readingHistory.value.length > 0) {
+    return readingHistory.value.map(toHistoryItem)
+  }
+  const recentItem = toRecentHistoryItem()
+  return recentItem === undefined ? [] : [recentItem]
 })
 
 const shelfWrapper = ref<HTMLElement>()
@@ -287,20 +388,100 @@ const toDetail = (
   })
 }
 
-const handleRecentClick = (event: MouseEvent) => {
-  if (readingRecent.value.bookUrl === '') {
-    event.preventDefault()
+const openHistoryItem = (item: ReadingHistoryItem, event?: MouseEvent) => {
+  if (item.bookUrl === '') {
+    event?.preventDefault()
     return
   }
   toDetail(
-    readingRecent.value.bookUrl,
-    readingRecent.value.name,
-    readingRecent.value.author,
-    readingRecent.value.chapterIndex,
-    readingRecent.value.chapterPos,
-    readingRecent.value.isSeachBook,
+    item.bookUrl,
+    item.name,
+    item.author,
+    item.chapterIndex,
+    item.chapterPos,
+    item.isSeachBook,
     true,
   )
+}
+
+const handleHistoryClick = (event: MouseEvent, item: ReadingHistoryItem) => {
+  openHistoryItem(item, event)
+}
+
+const removeReadingRecentIfMatches = (bookUrl: string) => {
+  if (readingRecent.value.bookUrl !== bookUrl) return
+  readingRecent.value = {
+    name: '尚无阅读记录',
+    author: '',
+    bookUrl: '',
+    chapterIndex: 0,
+    chapterPos: 0,
+    isSeachBook: false,
+  }
+  removeLocalStorageItem('readingRecent')
+}
+
+const loadReadingHistory = async () => {
+  try {
+    const resp = await API.getReadingHistory()
+    const { isSuccess, data, errorMsg } = resp.data
+    if (isSuccess === true) {
+      readingHistory.value = data
+      return
+    }
+    ElMessage.error(errorMsg || '阅读历史加载失败')
+  } catch {
+    readingHistory.value = []
+  }
+}
+
+const deleteReadingHistory = async (item: ReadingHistoryItem) => {
+  try {
+    const resp = await API.deleteReadingHistory({ bookUrl: item.bookUrl })
+    const { isSuccess, errorMsg } = resp.data
+    if (isSuccess !== true) {
+      ElMessage.error(errorMsg || '阅读历史删除失败')
+      return
+    }
+    readingHistory.value = readingHistory.value.filter(
+      book => book.bookUrl !== item.bookUrl,
+    )
+    removeReadingRecentIfMatches(item.bookUrl)
+  } catch {
+    ElMessage.error('阅读历史删除失败')
+  }
+}
+
+const clearReadingHistory = async () => {
+  try {
+    await ElMessageBox.confirm('确定清空全部阅读历史？', '清空阅读历史', {
+      confirmButtonText: '清空',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    const resp = await API.clearReadingHistory()
+    const { isSuccess, errorMsg } = resp.data
+    if (isSuccess !== true) {
+      ElMessage.error(errorMsg || '阅读历史清空失败')
+      return
+    }
+    readingHistory.value = []
+    readingRecent.value = {
+      name: '尚无阅读记录',
+      author: '',
+      bookUrl: '',
+      chapterIndex: 0,
+      chapterPos: 0,
+      isSeachBook: false,
+    }
+    removeLocalStorageItem('readingRecent')
+  } catch {
+    ElMessage.error('阅读历史清空失败')
+  }
 }
 
 const loadShelf = async () => {
@@ -308,6 +489,7 @@ const loadShelf = async () => {
   await store.saveBookProgress()
   //确保各种网络情况下同步请求先完成
   await store.loadBookShelf()
+  await loadReadingHistory()
 }
 
 onMounted(() => {
@@ -375,23 +557,76 @@ onMounted(() => {
     .recent-wrapper {
       margin-top: 36px;
 
+      .recent-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
       .recent-title {
         font-size: 14px;
         color: #b1b1b1;
         font-family: FZZCYSK;
       }
 
-      .reading-recent {
-        margin: 18px 0;
+      .history-clear {
+        min-width: 42px;
+        padding: 0;
+      }
+
+      .reading-history {
+        margin: 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .history-item {
+          color: inherit;
+          text-decoration: none;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 28px;
+          align-items: center;
+          gap: 6px;
+          min-height: 34px;
+          padding: 2px 0;
+        }
+
+        .history-main {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .history-name,
+        .history-chapter {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .history-name {
+          color: #33373d;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .history-chapter {
+          color: #8c8c8c;
+          font-size: 10px;
+        }
+
+        .history-delete {
+          width: 28px;
+          height: 28px;
+        }
 
         .recent-book {
+          width: fit-content;
+          max-width: 100%;
           font-size: 10px;
-          /*           // font-weight: 400;
-          // margin: 12px 0;
-          // font-weight: 500;
-          // color: #6B7C87; */
-          cursor: pointer;
-          /*           // padding: 6px 18px; */
+          cursor: default;
         }
       }
     }
@@ -505,6 +740,16 @@ onMounted(() => {
         .el-input__inner {
           color: #b1b1b1;
         }
+      }
+    }
+
+    .reading-history {
+      .history-name {
+        color: #d0d0d0;
+      }
+
+      .history-chapter {
+        color: #a0a0a0;
       }
     }
   }

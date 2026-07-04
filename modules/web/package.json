@@ -18,6 +18,7 @@
     "test:history-router": "node scripts/check-history-router.mjs",
     "test:cover-safety": "node scripts/check-cover-request-safety.mjs",
     "test:reading-state": "node scripts/check-reading-state-resilience.mjs",
+    "test:reading-history": "node scripts/check-reading-history.mjs",
     "type-check": "vue-tsc --build --force",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/"
