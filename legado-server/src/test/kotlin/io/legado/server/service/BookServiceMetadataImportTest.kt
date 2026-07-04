@@ -89,6 +89,34 @@ class BookServiceMetadataImportTest {
     }
 
     @Test
+    fun `scan reparse preserves curated author and kind when parser returns blank values`() {
+        initTempDatabase()
+        val root = Files.createTempDirectory("legado-metadata-import-root")
+        val file = root.resolve("special.txt")
+        file.writeText("第一章 開始\n內容")
+        val existingLastCheck = file.toFile().lastModified() - 1000
+
+        val oldBook = Book.fromFile(file.toFile()).copy(
+            name = "special",
+            author = "精選作者",
+            kind = "精選分類",
+            totalChapterNum = 7,
+            latestChapterTitle = "舊章節",
+            lastCheckTime = existingLastCheck
+        )
+        BookRepository.upsertBook(oldBook)
+
+        BookService(root.toString()).scanBooksDirectory()
+
+        val book = requireNotNull(BookRepository.getBook(file.toFile().absolutePath))
+        assertEquals("special", book.name)
+        assertEquals("精選作者", book.author)
+        assertEquals("精選分類", book.kind)
+        assertEquals(1, book.totalChapterNum)
+        assertEquals("第一章 開始", book.latestChapterTitle)
+    }
+
+    @Test
     fun `scan keeps books importable when metadata has no author`() {
         initTempDatabase()
         val root = Files.createTempDirectory("legado-metadata-import-root")

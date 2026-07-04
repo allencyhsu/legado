@@ -96,6 +96,8 @@ class BookService(private val booksDir: String) {
         val chapters = parseChapters(book)
 
         val updatedBook = book.copy(
+            author = mergedAuthor,
+            kind = mergedKind,
             totalChapterNum = chapters.size,
             latestChapterTitle = chapters.lastOrNull()?.title,
             lastCheckTime = file.lastModified()
