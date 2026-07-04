@@ -57,6 +57,12 @@ assertContains(
 
 assertContains(
   bookShelf,
+  /const loadReadingHistory = async \(\) => \{[\s\S]*?if \(isSuccess === true\) \{[\s\S]*?readingHistory\.value = data[\s\S]*?return[\s\S]*?\}[\s\S]*?readingHistory\.value = \[\][\s\S]*?ElMessage\.error\(errorMsg \|\| ['"]阅读历史加载失败['"]\)/,
+  'BookShelf must clear stale server reading history before reporting a non-success load failure.',
+)
+
+assertContains(
+  bookShelf,
   /API\.deleteReadingHistory\(\{\s*bookUrl: item\.bookUrl\s*\}\)/,
   'BookShelf must delete one reading history item by bookUrl.',
 )

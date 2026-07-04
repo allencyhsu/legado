@@ -430,6 +430,7 @@ const loadReadingHistory = async () => {
       readingHistory.value = data
       return
     }
+    readingHistory.value = []
     ElMessage.error(errorMsg || '阅读历史加载失败')
   } catch {
     readingHistory.value = []
