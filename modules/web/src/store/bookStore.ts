@@ -190,8 +190,9 @@ export const useBookStore = defineStore('book', {
       this.searchBooks = []
     },
     /** 1.保存进度到app 2.修改内存中的数据*/
-    async saveBookProgress() {
+    async saveBookProgress(options: { beacon?: boolean } = {}) {
       if (!this.bookProgress) return Promise.resolve()
+      const { beacon = true } = options
       const { bookUrl } = this.readingBook
       const shelfRaw = toRaw(this.shelf)
       const findIndex = shelfRaw.findIndex(book => book.bookUrl === bookUrl)
@@ -202,9 +203,11 @@ export const useBookStore = defineStore('book', {
           this.bookProgress,
         )
       }
-      // 直接关闭浏览器时 http请求可能被取消
-      // return API.saveBookProgress(this.bookProgress)
-      return API.saveBookProgressWithBeacon(this.bookProgress)
+      if (beacon) {
+        // 直接关闭浏览器时 http请求可能被取消
+        return API.saveBookProgressWithBeacon(this.bookProgress)
+      }
+      return API.saveBookProgress(this.bookProgress)
     },
   },
 })

@@ -1,11 +1,19 @@
 <template>
-  <div class="books-wrapper">
+  <div :class="{ 'books-wrapper': true, embedded }">
     <div class="wrapper">
-      <div
+      <a
         class="book"
         v-for="book in books"
         :key="book.bookUrl"
-        @click="handleClick(book)"
+        :href="getChapterHref(book)"
+        role="button"
+        tabindex="0"
+        @pointerdown="handlePointerDown($event, book)"
+        @pointerup="handlePointerUp($event, book)"
+        @pointercancel="handlePointerCancel"
+        @keydown.enter.prevent="handleKeyboardActivate(book)"
+        @keydown.space.prevent="handleKeyboardActivate(book)"
+        @click="handleClick($event, book)"
       >
         <div class="cover-img">
           <img
@@ -47,23 +55,84 @@
           </div>
           <div class="last-chapter">最新：{{ book.latestChapterTitle }}</div>
         </div>
-      </div>
+      </a>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import type { Book, SeachBook } from '@/book'
 import { dateFormat, isLegadoUrl } from '../utils/utils'
+import { getChapterHref } from '@/utils/chapterLink'
 import API from '@api'
-const props = defineProps<{
-  books: Array<Book | SeachBook>
-  isSearch: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    books: Array<Book | SeachBook>
+    isSearch: boolean
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const emit = defineEmits(['bookClick'])
-const handleClick = (book: Book | SeachBook) => emit('bookClick', book)
+const TAP_MOVEMENT_THRESHOLD = 10
+const DEFAULT_COVER_SRC =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+
+let pointerStart:
+  | {
+      pointerId: number
+      clientX: number
+      clientY: number
+      bookUrl: string
+    }
+  | undefined
+let ignoreNextClick = false
+
+const activateBook = (book: Book | SeachBook) => emit('bookClick', book)
+const handlePointerDown = (event: PointerEvent, book: Book | SeachBook) => {
+  if (event.pointerType === 'mouse') return
+  pointerStart = {
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    bookUrl: book.bookUrl,
+  }
+}
+const handlePointerUp = (event: PointerEvent, book: Book | SeachBook) => {
+  if (
+    pointerStart === undefined ||
+    pointerStart.pointerId !== event.pointerId ||
+    pointerStart.bookUrl !== book.bookUrl
+  ) {
+    return
+  }
+  const moved =
+    Math.abs(event.clientX - pointerStart.clientX) >
+      TAP_MOVEMENT_THRESHOLD ||
+    Math.abs(event.clientY - pointerStart.clientY) > TAP_MOVEMENT_THRESHOLD
+  pointerStart = undefined
+  if (moved) return
+  ignoreNextClick = true
+  activateBook(book)
+}
+const handlePointerCancel = () => {
+  pointerStart = undefined
+}
+const handleKeyboardActivate = (book: Book | SeachBook) => activateBook(book)
+const handleClick = (event: MouseEvent, book: Book | SeachBook) => {
+  const needsJsNavigation = 'respondTime' in book
+  if (ignoreNextClick) {
+    ignoreNextClick = false
+    if (needsJsNavigation) event.preventDefault()
+    return
+  }
+  activateBook(book)
+  if (needsJsNavigation) event.preventDefault()
+}
 const getCover = ({ bookUrl, coverUrl }: Book | SeachBook) => {
-  if (coverUrl === undefined) return API.getProxyCoverUrl(bookUrl)
+  if (coverUrl === undefined) return DEFAULT_COVER_SRC
   return isLegadoUrl(coverUrl) ? API.getProxyCoverUrl(coverUrl) : coverUrl
 }
 const proxyImage = (evt: Event) => {
@@ -78,7 +147,10 @@ const subJustify = computed(() =>
 
 <style lang="scss" scoped>
 .books-wrapper {
+  height: 100%;
+  min-height: 0;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 
   .wrapper {
     display: grid;
@@ -87,9 +159,12 @@ const subJustify = computed(() =>
     grid-gap: 10px;
 
     .book {
+      color: inherit;
+      text-decoration: none;
       user-select: none;
       display: flex;
       cursor: pointer;
+      touch-action: manipulation;
       margin-bottom: 18px;
       padding: 24px 24px;
       width: 360px;
@@ -99,10 +174,15 @@ const subJustify = computed(() =>
       .cover-img {
         width: 84px;
         height: 112px;
+        background: linear-gradient(145deg, #d8d0c2, #8f9b94);
+        border: 1px solid #d7d2c8;
+        box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.22);
+        box-sizing: border-box;
 
         .cover {
           width: 84px;
           height: 112px;
+          object-fit: cover;
         }
       }
 
@@ -171,6 +251,15 @@ const subJustify = computed(() =>
 
   .wrapper:last-child {
     margin-right: auto;
+  }
+}
+
+.books-wrapper.embedded {
+  height: auto;
+  overflow: visible;
+
+  .wrapper {
+    justify-content: flex-start;
   }
 }
 

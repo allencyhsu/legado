@@ -40,5 +40,6 @@ declare module 'vue' {
     SourceTabForm: typeof import('./components/SourceTabForm.vue')['default']
     SourceTabTools: typeof import('./components/SourceTabTools.vue')['default']
     ToolBar: typeof import('./components/ToolBar.vue')['default']
+    TtsPlayer: typeof import('./components/TtsPlayer.vue')['default']
   }
 }

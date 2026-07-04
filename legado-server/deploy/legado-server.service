@@ -1,0 +1,43 @@
+[Unit]
+Description=Legado Server - Local Book Reading Service
+Documentation=https://github.com/gedoor/legado
+After=network.target
+
+[Service]
+Type=simple
+User=legado
+Group=legado
+WorkingDirectory=/opt/legado-server
+
+# 主要配置 - 根據需要修改參數
+# 格式: java -jar <jar路徑> <端口> <書籍目錄> <資料庫路徑>
+ExecStart=/usr/bin/java -jar /opt/legado-server/legado-server-all.jar 8080 /data/books /opt/legado-server/data/legado.db
+
+# TTS 朗讀功能 - Qwen3-TTS API 伺服器地址
+# 詳見 deploy/qwen3-tts-setup.md
+Environment="TTS_URL=http://10.243.2.3:8880"
+
+# JVM 記憶體設置 (可選，取消註釋以啟用)
+# ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/legado-server/legado-server-all.jar 8080 /data/books /opt/legado-server/data/legado.db
+
+# 重啟策略
+Restart=on-failure
+RestartSec=10
+
+# 停止超時
+TimeoutStopSec=30
+
+# 日誌輸出到 systemd journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=legado-server
+
+# 安全設置
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/legado-server/data /data/books
+
+[Install]
+WantedBy=multi-user.target

@@ -8,6 +8,7 @@ import type {
   Book,
   BookChapter,
   BookProgress,
+  ReadingHistoryDeleteRequest,
   SeachBook,
 } from '@/book'
 import type { Source } from '@/source'
@@ -70,6 +71,15 @@ const saveBookProgressWithBeacon = (bookProgress: BookProgress) => {
 }
 
 const getBookShelf = () => ajax.get<LeagdoApiResponse<Book[]>>('getBookshelf')
+
+const getReadingHistory = () =>
+  ajax.get<LeagdoApiResponse<Book[]>>('getReadingHistory')
+
+const deleteReadingHistory = (request: ReadingHistoryDeleteRequest) =>
+  ajax.post<LeagdoApiResponse<string>>('deleteReadingHistory', request)
+
+const clearReadingHistory = () =>
+  ajax.post<LeagdoApiResponse<number>>('clearReadingHistory')
 
 const getChapterList = (/** @type {string} */ bookUrl: string) =>
   ajax.get<LeagdoApiResponse<BookChapter[]>>(
@@ -203,12 +213,23 @@ const getProxyImageUrl = (
   ).toString()
 }
 
+// TTS API
+const ttsSpeak = (text: string, voice: string, speed: number, instruct?: string) =>
+  ajax.post<Blob>('/tts/speech', { text, voice, speed, instruct }, { responseType: 'blob' })
+
+const ttsVoices = () => ajax.get('/tts/voices')
+
+const ttsHealth = () => ajax.get('/tts/health', { timeout: 3000 })
+
 export default {
   getReadConfig,
   saveReadConfig,
   saveBookProgress,
   saveBookProgressWithBeacon,
   getBookShelf,
+  getReadingHistory,
+  deleteReadingHistory,
+  clearReadingHistory,
   getChapterList,
   getBookContent,
   search,
@@ -223,4 +244,8 @@ export default {
 
   getProxyCoverUrl,
   getProxyImageUrl,
+
+  ttsSpeak,
+  ttsVoices,
+  ttsHealth,
 }

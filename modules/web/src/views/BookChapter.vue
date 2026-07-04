@@ -39,6 +39,10 @@
             </div>
           </template>
         </el-popover>
+        <div class="tool-icon" @click="toggleTts">
+          <div class="iconfont">&#58934;</div>
+          <div class="icon-text">朗读</div>
+        </div>
         <div class="tool-icon" @click="toShelf">
           <div class="iconfont">&#58892;</div>
           <div class="icon-text">书架</div>
@@ -78,6 +82,20 @@
       </div>
     </div>
     <div class="chapter-bar"></div>
+    <button
+      v-if="miniInterface"
+      class="mobile-chapter-hotspot previous"
+      type="button"
+      aria-label="上一章"
+      @click.stop="toPreChapter"
+    ></button>
+    <button
+      v-if="miniInterface"
+      class="mobile-chapter-hotspot next"
+      type="button"
+      aria-label="下一章"
+      @click.stop="toNextChapter"
+    ></button>
     <div class="chapter" ref="content" :style="chapterTheme">
       <div class="content">
         <div class="top-bar" ref="top"></div>
@@ -95,6 +113,7 @@
             :spacing="store.config.spacing"
             :fontSize="fontSize"
             :fontFamily="fontFamily"
+            :highlightParagraph="ttsHighlightIndex(data.index)"
             @readedLengthChange="onReadedLengthChange"
             v-if="showContent"
           />
@@ -103,6 +122,11 @@
         <div class="bottom-bar" ref="bottom"></div>
       </div>
     </div>
+    <tts-player
+      :visible="ttsVisible"
+      :paragraphs="currentTtsParagraphs"
+      @stopped="ttsVisible = false"
+    />
   </div>
 </template>
 
@@ -112,12 +136,24 @@ import settings from '@/config/themeConfig'
 import API from '@api'
 import { useLoading } from '@/hooks/loading'
 import { useThrottleFn } from '@vueuse/shared'
+import type { BaseBook } from '@/book'
+import {
+  getLocalStorageItem,
+  getSessionStorageItem,
+  removeLocalStorageItem,
+  removeSessionStorageItem,
+  setLocalStorageItem,
+  setSessionStorageItem,
+} from '@/utils/browserStorage'
+import { getChapterQuery, getPreservedRouteQuery } from '@/utils/chapterLink'
 import { isNullOrBlank } from '@/utils/utils'
 
 const content = ref()
 // loading spinner
 const { isLoading, loadingWrapper } = useLoading(content, '正在获取信息')
 const store = useBookStore()
+const ttsStore = useTtsStore()
+const route = useRoute()
 
 const {
   catalog,
@@ -143,6 +179,88 @@ const isSeachBook = computed({
   set: value => (store.readingBook.isSeachBook = value),
 })
 
+type ReadingBook = BaseBook & {
+  chapterPos: number
+  chapterIndex: number
+  isSeachBook?: boolean
+}
+
+const parseReadingRecent = (): Partial<ReadingBook> | undefined => {
+  const readingRecentStr = getLocalStorageItem('readingRecent')
+  if (readingRecentStr == null) return undefined
+  try {
+    return JSON.parse(readingRecentStr)
+  } catch {
+    removeLocalStorageItem('readingRecent')
+  }
+}
+
+const toNumber = (value: unknown, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const queryString = (key: string) => {
+  const value = route.query[key]
+  return Array.isArray(value) ? value[0] : value
+}
+
+const resolveReadingBook = (): ReadingBook | undefined => {
+  const recent = parseReadingRecent()
+  const bookUrl =
+    queryString('bookUrl') ||
+    getSessionStorageItem('bookUrl') ||
+    store.readingBook.bookUrl ||
+    recent?.bookUrl
+  const name =
+    queryString('bookName') ||
+    getSessionStorageItem('bookName') ||
+    store.readingBook.name ||
+    recent?.name
+  const author =
+    queryString('bookAuthor') ??
+    getSessionStorageItem('bookAuthor') ??
+    store.readingBook.author ??
+    recent?.author
+  const routeIsSeachBook = queryString('isSeachBook')
+  const sessionIsSeachBook = getSessionStorageItem('isSeachBook')
+
+  if (
+    typeof bookUrl !== 'string' ||
+    typeof name !== 'string' ||
+    isNullOrBlank(bookUrl) ||
+    isNullOrBlank(name) ||
+    author == null
+  ) {
+    return undefined
+  }
+
+  return {
+    bookUrl,
+    name,
+    author,
+    chapterIndex: toNumber(
+      queryString('chapterIndex') ??
+        getSessionStorageItem('chapterIndex') ??
+        store.readingBook.chapterIndex ??
+        recent?.chapterIndex,
+    ),
+    chapterPos: toNumber(
+      queryString('chapterPos') ??
+        getSessionStorageItem('chapterPos') ??
+        store.readingBook.chapterPos ??
+        recent?.chapterPos,
+    ),
+    isSeachBook:
+      routeIsSeachBook != null
+        ? routeIsSeachBook === 'true'
+        : sessionIsSeachBook != null
+        ? sessionIsSeachBook === 'true'
+        : store.readingBook.isSeachBook === true ||
+          recent?.isSeachBook === true,
+  }
+}
+
 // 当前阅读书籍readingBook持久化
 watch(
   () => store.readingBook,
@@ -150,10 +268,13 @@ watch(
     // 保存localStorage
     // localStorage.setItem(book.bookUrl, JSON.stringify(book));
     // 最近阅读
-    localStorage.setItem('readingRecent', JSON.stringify(book))
+    setLocalStorageItem('readingRecent', JSON.stringify(book))
     //保存 sessionStorage
-    sessionStorage.setItem('chapterIndex', book.chapterIndex.toString())
-    sessionStorage.setItem('chapterPos', book.chapterPos.toString())
+    setSessionStorageItem('bookUrl', book.bookUrl)
+    setSessionStorageItem('bookName', book.name)
+    setSessionStorageItem('bookAuthor', book.author)
+    setSessionStorageItem('chapterIndex', book.chapterIndex.toString())
+    setSessionStorageItem('chapterPos', book.chapterPos.toString())
   },
   { deep: 1 },
 )
@@ -277,8 +398,17 @@ const toBottom = () => {
 
 // 书架路由切换
 const router = useRouter()
+const syncChapterRouteProgress = () => {
+  router.replace({
+    path: '/chapter',
+    query: getChapterQuery(store.readingBook, route.query),
+  })
+}
 const toShelf = () => {
-  router.push('/')
+  router.push({
+    path: '/',
+    query: getPreservedRouteQuery(route.query),
+  })
 }
 
 // 获取章节内容
@@ -360,6 +490,7 @@ const saveReadingBookProgressToBrowser = (index: number, pos: number) => {
   // 保存pinia
   chapterIndex.value = index
   chapterPos.value = pos
+  syncChapterRouteProgress()
 }
 
 // 进度同步
@@ -470,29 +601,128 @@ const ignoreKeyPress = (event: KeyboardEvent) => {
   }
 }
 
+// TTS
+const ttsVisible = ref(false)
+const currentTtsParagraphs = computed(() => {
+  if (chapterData.value.length === 0) return []
+  // Use the first (current) chapter's content
+  return chapterData.value[0]?.content ?? []
+})
+
+const toggleTts = () => {
+  if (ttsVisible.value) {
+    ttsStore.stop()
+    ttsVisible.value = false
+  } else {
+    ttsVisible.value = true
+  }
+}
+
+// Compute highlight index for a given chapter
+const ttsHighlightIndex = (dataIndex: number) => {
+  if (ttsStore.status === 'idle' || ttsStore.currentParagraph < 0) return -1
+  // Only highlight in the first loaded chapter
+  if (chapterData.value.length > 0 && chapterData.value[0].index === dataIndex) {
+    return ttsStore.currentParagraph
+  }
+  return -1
+}
+
+// Auto-scroll to current TTS paragraph
+watch(
+  () => ttsStore.currentParagraph,
+  (paragraphIndex) => {
+    if (paragraphIndex < 0 || !ttsVisible.value) return
+    if (chapterRef.value && chapterRef.value.length > 0) {
+      const el = chapterRef.value[0]?.$el?.parentElement
+      if (el) {
+        const paragraphs = el.querySelectorAll('[data-chapterpos]')
+        // +1 to skip the title element
+        const target = paragraphs[paragraphIndex + 1]
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    }
+  },
+)
+
+// Stop TTS on chapter change (unless auto-advancing)
+const ttsAutoAdvancing = ref(false)
+watch(chapterIndex, () => {
+  if (ttsAutoAdvancing.value) return
+  if (ttsStore.status !== 'idle') {
+    ttsStore.stop()
+  }
+})
+
+// Auto-advance to next chapter when TTS finishes
+watch(
+  () => ttsStore.chapterFinished,
+  (finished) => {
+    if (!finished || !ttsVisible.value) return
+    ttsStore.chapterFinished = false
+
+    const nextIndex = chapterIndex.value + 1
+    if (typeof catalog.value[nextIndex] === 'undefined') {
+      ElMessage({ message: '已是最后一章', type: 'info' })
+      return
+    }
+
+    console.log('[TTS] Auto-advancing to next chapter:', nextIndex)
+    ttsAutoAdvancing.value = true
+
+    // Load next chapter content
+    store.setContentLoading(true)
+    const bookUrl = store.readingBook.bookUrl
+    const { title, index: catIndex } = catalog.value[nextIndex]
+
+    // Reset chapter data and update progress
+    store.setShowContent(false)
+    jump(top.value, { duration: 0 })
+    saveReadingBookProgressToBrowser(nextIndex, 0)
+    chapterData.value = []
+
+    loadingWrapper(
+      API.getBookContent(bookUrl, catIndex).then(
+        res => {
+          ttsAutoAdvancing.value = false
+          if (res.data.isSuccess) {
+            const content = res.data.data.split(/\n+/)
+            chapterData.value.push({ index: nextIndex, content, title })
+            store.setContentLoading(true)
+            noPoint.value = false
+            store.setShowContent(true)
+            store.saveBookProgress()
+
+            // Start TTS on new chapter after DOM update
+            nextTick(() => {
+              ttsStore.play(content)
+            })
+          } else {
+            ElMessage({ message: res.data.errorMsg, type: 'error' })
+            chapterData.value.push({ index: nextIndex, content: [res.data.errorMsg], title })
+            store.setShowContent(true)
+          }
+        },
+        err => {
+          ttsAutoAdvancing.value = false
+          chapterData.value.push({ index: nextIndex, content: ['获取章节内容失败！'], title })
+          store.setShowContent(true)
+        },
+      ),
+    )
+  },
+)
+
 onMounted(async () => {
   await store.loadWebConfig()
-  //获取书籍数据
-  const bookUrl = sessionStorage.getItem('bookUrl')
-  const name = sessionStorage.getItem('bookName')
-  const author = sessionStorage.getItem('bookAuthor')
-  const chapterIndex = Number(sessionStorage.getItem('chapterIndex') || 0)
-  const chapterPos = Number(sessionStorage.getItem('chapterPos') || 0)
-  const isSeachBook = sessionStorage.getItem('isSeachBook') === 'true'
-  if (isNullOrBlank(bookUrl) || isNullOrBlank(name) || author === null) {
+  const book = resolveReadingBook()
+  if (book === undefined) {
     ElMessage.warning('书籍信息为空，即将自动返回书架页面...')
     return setTimeout(toShelf, 500)
   }
-  const book: typeof store.readingBook = {
-    // @ts-expect-error: bookUrl name author is NON_Blank string here
-    bookUrl,
-    // @ts-expect-error: bookUrl name author is NON_Blank string here
-    name,
-    author,
-    chapterIndex,
-    chapterPos,
-    isSeachBook,
-  }
+  const { chapterIndex, chapterPos, name } = book
   onResize()
   window.addEventListener('resize', onResize)
   loadingWrapper(
@@ -510,12 +740,13 @@ onMounted(async () => {
       if (infiniteLoading.value === true) scrollObserver.observe(loading.value)
       //第二次点击同一本书 页面标题不会变化
       document.title = '...'
-      document.title = (name as string) + ' | ' + chapters[chapterIndex].title
+      document.title = name + ' | ' + chapters[chapterIndex].title
     }),
   )
 })
 
 onUnmounted(() => {
+  ttsStore.stop()
   window.removeEventListener('keyup', handleKeyPress)
   window.removeEventListener('keydown', ignoreKeyPress)
   window.removeEventListener('resize', onResize)
@@ -550,7 +781,7 @@ const addToBookShelfConfirm = async () => {
         //选择否，删除书籍
         await API.deleteBook(book)
       })
-      .finally(() => sessionStorage.removeItem('isSeachBook'))
+      .finally(() => removeSessionStorageItem('isSeachBook'))
   }
 }
 onBeforeRouteLeave(async (to, from, next) => {
@@ -765,6 +996,36 @@ onBeforeRouteLeave(async (to, from, next) => {
       padding: 0 20px;
       box-sizing: border-box;
     }
+
+    .mobile-chapter-hotspot {
+      position: fixed;
+      bottom: 0;
+      z-index: 90;
+      width: 26vw;
+      height: 34vh;
+      min-width: 96px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      appearance: none;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-chapter-hotspot.previous {
+      left: 0;
+    }
+
+    .mobile-chapter-hotspot.next {
+      right: 0;
+    }
+  }
+}
+
+@media screen and (min-width: 777px) {
+  .mobile-chapter-hotspot {
+    display: none;
   }
 }
 </style>

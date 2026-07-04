@@ -5,6 +5,7 @@
     :key="index"
     ref="paragraphRef"
     :data-chapterpos="chapterPos[index]"
+    :class="{ 'tts-active': highlightParagraph === index }"
   >
     <img
       class="full"
@@ -34,6 +35,7 @@ const props = defineProps<{
   spacing: webReadConfig['spacing']
   fontFamily: string
   fontSize: string
+  highlightParagraph: number
 }>()
 
 const getImageSrc = (content: string) => {
@@ -170,5 +172,11 @@ p {
 .full {
   display: block;
   width: 100%;
+}
+
+.tts-active {
+  background: rgba(237, 66, 89, 0.1);
+  border-radius: 4px;
+  transition: background 0.3s ease;
 }
 </style>

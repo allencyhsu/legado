@@ -1,10 +1,9 @@
-import { createWebHashHistory, createRouter } from 'vue-router'
+import { createWebHistory, createRouter } from 'vue-router'
 import { bookRoutes } from './bookRouter'
 import { sourceRoutes } from './sourceRouter'
 
 const router = createRouter({
-  //   history: createWebHistory(process.env.BASE_URL),
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes: [bookRoutes, sourceRoutes].flat(),
 })
 

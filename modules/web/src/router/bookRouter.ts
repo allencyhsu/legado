@@ -1,4 +1,4 @@
-import { createWebHashHistory, createRouter } from 'vue-router'
+import { createWebHistory, createRouter } from 'vue-router'
 
 export const bookRoutes = [
   {
@@ -14,8 +14,7 @@ export const bookRoutes = [
 ]
 
 const router = createRouter({
-  // mode: "history",
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes: bookRoutes,
 })
 
