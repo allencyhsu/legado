@@ -7,7 +7,7 @@
       </div>
       <div class="search-wrapper">
         <el-input
-          placeholder="搜索书籍，在线书籍自动加入书架"
+          placeholder="搜索本地书架，按 Enter 在线搜索"
           v-model="searchWord"
           class="search-input"
           :prefix-icon="SearchIcon"
@@ -118,10 +118,46 @@
     </div>
     <div class="shelf-wrapper" ref="shelfWrapper">
       <book-items
-        :books="books"
+        v-if="isOnlineSearching"
+        :books="onlineBooks"
         @bookClick="handleBookClick"
-        :isSearch="isSearching"
+        :isSearch="true"
       ></book-items>
+      <div v-else class="grouped-shelf">
+        <div class="shelf-summary">
+          <span v-if="localSearchActive">本地搜索：{{ localResultCount }} 本</span>
+          <span v-else>本地书架：{{ shelf.length }} 本</span>
+        </div>
+        <div v-if="groupedLocalBooks.length === 0" class="shelf-empty">
+          没有符合的本地书籍
+        </div>
+        <section
+          v-for="category in groupedLocalBooks"
+          :key="category.kind"
+          class="category-section"
+        >
+          <div class="category-header">
+            <h2>{{ category.kind }}</h2>
+            <span>{{ category.count }} 本</span>
+          </div>
+          <section
+            v-for="authorGroup in category.authorGroups"
+            :key="`${category.kind}:${authorGroup.author}`"
+            class="author-section"
+          >
+            <div class="author-header">
+              <h3>{{ authorGroup.author }}</h3>
+              <span>{{ authorGroup.count }} 本</span>
+            </div>
+            <book-items
+              :books="authorGroup.books"
+              @bookClick="handleBookClick"
+              :isSearch="false"
+              :embedded="true"
+            ></book-items>
+          </section>
+        </section>
+      </div>
     </div>
   </div>
 </template>
@@ -150,6 +186,11 @@ import {
   setSessionStorageItem,
 } from '@/utils/browserStorage'
 import { getChapterHref, getChapterQuery } from '@/utils/chapterLink'
+import {
+  filterBookshelfBooks,
+  groupBookshelfBooks,
+  normalizeBookshelfSearch,
+} from '@/utils/bookshelfGrouping'
 import { validatorHttpUrl } from '@/utils/utils'
 import type { Book, SeachBook } from '@/book'
 import type { webReadConfig } from '@/web'
@@ -230,32 +271,28 @@ const { showLoading, closeLoading, loadingWrapper, isLoading } = useLoading(
 )
 
 // 书架书籍和在线书籍搜索
-const books = shallowRef<Book[] | SeachBook[]>([])
+const onlineBooks = shallowRef<SeachBook[]>([])
 const shelf = computed(() => store.shelf)
 const searchWord = ref('')
-const isSearching = ref(false)
-watchEffect(() => {
-  if (isSearching.value && searchWord.value != '') return
-  isSearching.value = false
-  books.value = []
-  if (searchWord.value == '') {
-    books.value = shelf.value
-    return
-  }
-  books.value = shelf.value.filter(book => {
-    return (
-      book.name.includes(searchWord.value) ||
-      book.author.includes(searchWord.value)
-    )
-  })
+const isOnlineSearching = ref(false)
+const localBooks = computed(() => filterBookshelfBooks(shelf.value, searchWord.value))
+const groupedLocalBooks = computed(() => groupBookshelfBooks(localBooks.value))
+const localSearchActive = computed(
+  () => normalizeBookshelfSearch(searchWord.value) !== '',
+)
+const localResultCount = computed(() => localBooks.value.length)
+
+watch(searchWord, () => {
+  isOnlineSearching.value = false
+  onlineBooks.value = []
 })
 //搜索在线书籍
 const searchBook = () => {
   if (searchWord.value == '') return
-  books.value = []
+  onlineBooks.value = []
   store.clearSearchBooks()
   showLoading()
-  isSearching.value = true
+  isOnlineSearching.value = true
   API.search(
     searchWord.value,
     searcBooks => {
@@ -264,7 +301,7 @@ const searchBook = () => {
       }
       try {
         store.setSearchBooks(searcBooks)
-        books.value = store.searchBooks
+        onlineBooks.value = store.searchBooks
         //store.searchBooks.forEach((item) => books.value.push(item));
       } catch (e) {
         ElMessage.error('后端数据错误')
@@ -273,7 +310,7 @@ const searchBook = () => {
     },
     () => {
       closeLoading()
-      if (books.value.length == 0) {
+      if (onlineBooks.value.length == 0) {
         ElMessage.info('搜索结果为空')
       }
     },
@@ -675,6 +712,76 @@ onMounted(() => {
     flex-direction: column;
     box-sizing: border-box;
     overflow: hidden;
+
+    .grouped-shelf {
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .shelf-summary {
+      color: #8c8c8c;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .shelf-empty {
+      color: #969ba3;
+      font-size: 14px;
+      padding: 24px 0;
+    }
+
+    .category-section {
+      margin-bottom: 28px;
+    }
+
+    .category-header,
+    .author-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .category-header {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+
+      h2 {
+        color: #33373d;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      span {
+        color: #8c8c8c;
+        font-size: 12px;
+      }
+    }
+
+    .author-section {
+      margin-bottom: 18px;
+    }
+
+    .author-header {
+      margin: 0 0 8px;
+
+      h3 {
+        color: #555b63;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      span {
+        color: #a0a0a0;
+        font-size: 11px;
+      }
+    }
   }
 }
 
@@ -721,6 +828,26 @@ onMounted(() => {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
 
+      .grouped-shelf {
+        padding: 0 0 20px;
+      }
+
+      .shelf-summary,
+      .shelf-empty,
+      .category-header,
+      .author-header {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .category-header {
+        margin-top: 14px;
+
+        h2 {
+          font-size: 17px;
+        }
+      }
+
       :deep(.el-loading-spinner) {
         display: none;
       }
@@ -761,6 +888,22 @@ onMounted(() => {
 
   :deep(.shelf-wrapper) {
     background-color: #161819;
+  }
+
+  .shelf-wrapper {
+    .category-header {
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+
+      h2 {
+        color: #d0d0d0;
+      }
+    }
+
+    .author-header {
+      h3 {
+        color: #c0c0c0;
+      }
+    }
   }
 }
 </style>

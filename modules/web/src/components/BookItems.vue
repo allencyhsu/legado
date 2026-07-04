@@ -1,5 +1,5 @@
 <template>
-  <div class="books-wrapper">
+  <div :class="{ 'books-wrapper': true, embedded }">
     <div class="wrapper">
       <a
         class="book"
@@ -64,10 +64,16 @@ import type { Book, SeachBook } from '@/book'
 import { dateFormat, isLegadoUrl } from '../utils/utils'
 import { getChapterHref } from '@/utils/chapterLink'
 import API from '@api'
-const props = defineProps<{
-  books: Array<Book | SeachBook>
-  isSearch: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    books: Array<Book | SeachBook>
+    isSearch: boolean
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const emit = defineEmits(['bookClick'])
 const TAP_MOVEMENT_THRESHOLD = 10
@@ -245,6 +251,15 @@ const subJustify = computed(() =>
 
   .wrapper:last-child {
     margin-right: auto;
+  }
+}
+
+.books-wrapper.embedded {
+  height: auto;
+  overflow: visible;
+
+  .wrapper {
+    justify-content: flex-start;
   }
 }
 

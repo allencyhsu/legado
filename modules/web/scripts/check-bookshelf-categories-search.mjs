@@ -16,6 +16,8 @@ const assertContains = (content, pattern, message) => {
 const helper = read('src/utils/bookshelfGrouping.ts')
 const packageJson = read('package.json')
 const agents = readRepo('AGENTS.md')
+const bookShelf = read('src/views/BookShelf.vue')
+const bookItems = read('src/components/BookItems.vue')
 
 assertContains(
   helper,
@@ -71,6 +73,72 @@ assertContains(
   agents,
   /npm run test:bookshelf-categories/,
   'AGENTS.md packaging sequence must include npm run test:bookshelf-categories.',
+)
+
+assertContains(
+  bookShelf,
+  /import \{[\s\S]*?filterBookshelfBooks[\s\S]*?groupBookshelfBooks[\s\S]*?normalizeBookshelfSearch[\s\S]*?\} from '@\/utils\/bookshelfGrouping'/,
+  'BookShelf.vue must import bookshelf grouping and local search helpers.',
+)
+
+assertContains(
+  bookShelf,
+  /const onlineBooks = shallowRef<SeachBook\[\]>\(\[\]\)/,
+  'BookShelf.vue must keep online search results separate from local shelf books.',
+)
+
+assertContains(
+  bookShelf,
+  /const isOnlineSearching = ref\(false\)/,
+  'BookShelf.vue must distinguish online search mode from local search filtering.',
+)
+
+assertContains(
+  bookShelf,
+  /const localBooks = computed\(\(\) => filterBookshelfBooks\(shelf\.value, searchWord\.value\)\)/,
+  'BookShelf.vue must filter local books with filterBookshelfBooks.',
+)
+
+assertContains(
+  bookShelf,
+  /const groupedLocalBooks = computed\(\(\) => groupBookshelfBooks\(localBooks\.value\)\)/,
+  'BookShelf.vue must group filtered local books by category and author.',
+)
+
+assertContains(
+  bookShelf,
+  /v-for="category in groupedLocalBooks"[\s\S]*?category\.kind[\s\S]*?v-for="authorGroup in category\.authorGroups"[\s\S]*?authorGroup\.author/,
+  'BookShelf.vue must render category sections and author groups.',
+)
+
+assertContains(
+  bookShelf,
+  /:books="authorGroup\.books"[\s\S]*?:embedded="true"/,
+  'BookShelf.vue must render grouped books through embedded BookItems.',
+)
+
+assertContains(
+  bookShelf,
+  /v-if="isOnlineSearching"[\s\S]*?:books="onlineBooks"[\s\S]*?:isSearch="true"/,
+  'BookShelf.vue must preserve online search result rendering.',
+)
+
+assertContains(
+  bookItems,
+  /embedded\?: boolean/,
+  'BookItems.vue must accept an embedded prop.',
+)
+
+assertContains(
+  bookItems,
+  /:class="\{ 'books-wrapper': true, embedded \}"/,
+  'BookItems.vue must expose embedded class state.',
+)
+
+assertContains(
+  bookItems,
+  /\.books-wrapper\.embedded\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*visible;/,
+  'Embedded BookItems must not create nested scroll containers.',
 )
 
 if (process.exitCode) process.exit(process.exitCode)
