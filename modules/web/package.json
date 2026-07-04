@@ -19,6 +19,7 @@
     "test:cover-safety": "node scripts/check-cover-request-safety.mjs",
     "test:reading-state": "node scripts/check-reading-state-resilience.mjs",
     "test:reading-history": "node scripts/check-reading-history.mjs",
+    "test:bookshelf-categories": "node scripts/check-bookshelf-categories-search.mjs",
     "type-check": "vue-tsc --build --force",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write src/"
