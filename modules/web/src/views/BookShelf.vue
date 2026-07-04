@@ -275,6 +275,7 @@ const onlineBooks = shallowRef<SeachBook[]>([])
 const shelf = computed(() => store.shelf)
 const searchWord = ref('')
 const isOnlineSearching = ref(false)
+let suppressSearchWordReset = false
 const localBooks = computed(() => filterBookshelfBooks(shelf.value, searchWord.value))
 const groupedLocalBooks = computed(() => groupBookshelfBooks(localBooks.value))
 const localSearchActive = computed(
@@ -283,6 +284,10 @@ const localSearchActive = computed(
 const localResultCount = computed(() => localBooks.value.length)
 
 watch(searchWord, () => {
+  if (suppressSearchWordReset) {
+    suppressSearchWordReset = false
+    return
+  }
   isOnlineSearching.value = false
   onlineBooks.value = []
 })
@@ -402,6 +407,7 @@ const toDetail = (
     fromReadRecentClick &&
     shelf.value.every(book => book.bookUrl !== bookUrl)
   ) {
+    suppressSearchWordReset = true
     searchWord.value = bookName
     searchBook()
     return
@@ -830,6 +836,8 @@ onMounted(() => {
 
       .grouped-shelf {
         padding: 0 0 20px;
+        overflow: visible;
+        -webkit-overflow-scrolling: auto;
       }
 
       .shelf-summary,

@@ -95,6 +95,24 @@ assertContains(
 
 assertContains(
   bookShelf,
+  /let suppressSearchWordReset = false/,
+  'BookShelf.vue must keep a suppression flag for programmatic recent-book searches.',
+)
+
+assertContains(
+  bookShelf,
+  /watch\(searchWord, \(\) => \{[\s\S]*?if \(suppressSearchWordReset\) \{[\s\S]*?suppressSearchWordReset = false[\s\S]*?return[\s\S]*?\}/,
+  'BookShelf.vue must skip clearing online search state once when searchWord is changed programmatically.',
+)
+
+assertContains(
+  bookShelf,
+  /fromReadRecentClick[\s\S]*?suppressSearchWordReset = true[\s\S]*?searchWord\.value = bookName[\s\S]*?searchBook\(\)/,
+  'Recent-book auto search must set the suppression flag before assigning searchWord and starting the online search.',
+)
+
+assertContains(
+  bookShelf,
   /const localBooks = computed\(\(\) => filterBookshelfBooks\(shelf\.value, searchWord\.value\)\)/,
   'BookShelf.vue must filter local books with filterBookshelfBooks.',
 )
@@ -121,6 +139,12 @@ assertContains(
   bookShelf,
   /v-if="isOnlineSearching"[\s\S]*?:books="onlineBooks"[\s\S]*?:isSearch="true"/,
   'BookShelf.vue must preserve online search result rendering.',
+)
+
+assertContains(
+  bookShelf,
+  /@media\s+screen\s+and\s+\(max-width:\s*750px\)[\s\S]*\.shelf-wrapper\s*\{[\s\S]*overflow:\s*auto;[\s\S]*\.grouped-shelf\s*\{[\s\S]*overflow:\s*visible;/,
+  'Mobile grouped shelf must not create a second vertical scroll container.',
 )
 
 assertContains(
