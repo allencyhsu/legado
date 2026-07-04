@@ -28,6 +28,50 @@ fun Route.progressRoutes(bookService: BookService) {
     }
 
     /**
+     * GET /getReadingHistory
+     * Returns books with saved reading progress, newest first.
+     */
+    get("/getReadingHistory") {
+        try {
+            call.respond(ReturnData.success(bookService.getReadingHistory()))
+        } catch (e: Exception) {
+            call.respond(ReturnData.error(e.message ?: "Failed to get reading history"))
+        }
+    }
+
+    /**
+     * POST /deleteReadingHistory
+     * Deletes one reading history item without deleting the book.
+     * Request body: { bookUrl }
+     */
+    post("/deleteReadingHistory") {
+        try {
+            val request = call.receive<ReadingHistoryDeleteRequest>()
+            if (request.bookUrl.isBlank()) {
+                call.respond(ReturnData.error("Missing bookUrl"))
+                return@post
+            }
+            bookService.deleteReadingHistory(request.bookUrl)
+            call.respond(ReturnData.success(""))
+        } catch (e: Exception) {
+            call.respond(ReturnData.error(e.message ?: "Failed to delete reading history"))
+        }
+    }
+
+    /**
+     * POST /clearReadingHistory
+     * Deletes all reading history items without deleting books.
+     */
+    post("/clearReadingHistory") {
+        try {
+            val deletedCount = bookService.clearReadingHistory()
+            call.respond(ReturnData.success(deletedCount))
+        } catch (e: Exception) {
+            call.respond(ReturnData.error(e.message ?: "Failed to clear reading history"))
+        }
+    }
+
+    /**
      * GET /getReadConfig
      * Returns reading configuration
      */
@@ -61,4 +105,8 @@ data class BookProgressRequest(
     val durChapterPos: Int,
     val durChapterTime: Long,
     val durChapterTitle: String?
+)
+
+data class ReadingHistoryDeleteRequest(
+    val bookUrl: String
 )
