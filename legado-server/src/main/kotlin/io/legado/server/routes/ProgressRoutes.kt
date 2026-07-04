@@ -47,7 +47,7 @@ fun Route.progressRoutes(bookService: BookService) {
     post("/deleteReadingHistory") {
         try {
             val request = call.receive<ReadingHistoryDeleteRequest>()
-            if (request.bookUrl.isBlank()) {
+            if (request.bookUrl.isNullOrBlank()) {
                 call.respond(ReturnData.error("Missing bookUrl"))
                 return@post
             }
@@ -108,5 +108,5 @@ data class BookProgressRequest(
 )
 
 data class ReadingHistoryDeleteRequest(
-    val bookUrl: String
+    val bookUrl: String? = null
 )

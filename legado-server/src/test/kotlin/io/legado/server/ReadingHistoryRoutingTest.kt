@@ -68,6 +68,19 @@ class ReadingHistoryRoutingTest {
         assertTrue(body.contains("Missing bookUrl"))
     }
 
+    @Test
+    fun `delete reading history rejects absent bookUrl`() = withReadingHistoryServer {
+        val response = client.post("/deleteReadingHistory") {
+            contentType(ContentType.Application.Json)
+            setBody("""{}""")
+        }
+        val body = response.bodyAsText()
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(body.contains("\"isSuccess\": false"))
+        assertTrue(body.contains("Missing bookUrl"))
+    }
+
     private fun withReadingHistoryServer(testBlock: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         val dbPath = Files.createTempDirectory("legado-reading-history-routing-db").resolve("legado.db")
         val booksDir = Files.createTempDirectory("legado-reading-history-routing-books")
