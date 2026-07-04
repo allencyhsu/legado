@@ -162,6 +162,19 @@ class LocalBookMetadataParserTest {
         assertEquals("", book.author)
         assertNull(book.kind)
     }
+
+    @Test
+    fun `does not treat root-level filenames as categories`() {
+        val root = Files.createTempDirectory("legado-metadata-root")
+        val file = root.resolve("根目錄小說.txt")
+        file.writeText("第一章 開始\n內容")
+
+        val metadata = LocalBookMetadataParser.parse(file.toFile(), root.toFile())
+
+        assertEquals("根目錄小說", metadata.name)
+        assertEquals("", metadata.author)
+        assertNull(metadata.kind)
+    }
 }
 ```
 
@@ -204,9 +217,9 @@ object LocalBookMetadataParser {
     fun parse(file: File, booksRoot: File): LocalBookMetadata {
         val fallbackName = file.nameWithoutExtension.trim()
         return try {
-            val relativeParts = relativePathParts(file.toPath(), booksRoot.toPath())
-            val kind = relativeParts.getOrNull(0)?.cleanSegment()
-            val authorFromDirectory = relativeParts.getOrNull(1)?.cleanAuthorDirectory().orEmpty()
+            val directoryParts = relativeDirectoryParts(file.toPath(), booksRoot.toPath())
+            val kind = directoryParts.getOrNull(0)?.cleanSegment()
+            val authorFromDirectory = directoryParts.getOrNull(1)?.cleanAuthorDirectory().orEmpty()
             val filenameMetadata = parseFilename(fallbackName)
 
             LocalBookMetadata(
@@ -230,13 +243,15 @@ object LocalBookMetadataParser {
         )
     }
 
-    private fun relativePathParts(filePath: Path, rootPath: Path): List<String> {
+    private fun relativeDirectoryParts(filePath: Path, rootPath: Path): List<String> {
         val root = rootPath.toAbsolutePath().normalize()
         val file = filePath.toAbsolutePath().normalize()
         require(file.startsWith(root)) {
             "File is outside books root: $file"
         }
-        return root.relativize(file).map { it.toString() }
+        val parent = file.parent ?: return emptyList()
+        if (!parent.startsWith(root) || parent == root) return emptyList()
+        return root.relativize(parent).map { it.toString() }
     }
 
     private fun parseFilename(nameWithoutExtension: String): LocalBookMetadata {
